@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-30
+
 ### Added
 
 - `duoready scan` with text, JSON and GitHub annotation output and documented exit codes.
@@ -45,3 +47,6 @@ All notable changes to this project are documented here. The format follows
 - `// duoready:ignore-file` suppresses a rule for a whole Swift file.
 - Installation with Mint, and a Homebrew formula template and release script for the
   `toluwade/tap` tap.
+
+[Unreleased]: https://github.com/toluwade/duoready/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/toluwade/duoready/releases/tag/v0.1.0
