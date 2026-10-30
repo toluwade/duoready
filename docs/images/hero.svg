@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" width="900" height="470" role="img" aria-labelledby="title desc">
+  <title id="title">DuoReady flags layout problems inline</title>
+  <desc id="desc">A Swift view controller with two DuoReady findings shown under the lines they flag: DR001 for UIScreen.main.bounds and DR002 for branching on device orientation.</desc>
+  <style>
+    text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
+    .code { font-size: 14px; fill: #d6deeb; }
+    .ln { font-size: 13px; fill: #4b5674; text-anchor: end; }
+    .kw { fill: #c792ea; }
+    .ty { fill: #82aaff; }
+    .num { fill: #f78c6c; }
+    .mem { fill: #7fdbca; }
+    .head { font-size: 12.5px; font-weight: 700; }
+    .msg { font-size: 12.5px; fill: #e6ebf5; }
+    .fix { font-size: 12px; fill: #9aa5c4; }
+    .title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; fill: #9aa5c4; white-space: normal; }
+    .foot { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; white-space: normal; }
+  </style>
+
+  <!-- Window -->
+  <rect x="0.5" y="0.5" width="899" height="469" rx="12" fill="#0f1420" stroke="#232b40"/>
+  <path d="M12 .5h876a11.5 11.5 0 0 1 11.5 11.5v28H.5V12A11.5 11.5 0 0 1 12 .5z" fill="#161c2b"/>
+  <circle cx="22" cy="20" r="6" fill="#ff5f57"/>
+  <circle cx="42" cy="20" r="6" fill="#febc2e"/>
+  <circle cx="62" cy="20" r="6" fill="#28c840"/>
+  <text x="450" y="25" class="title" text-anchor="middle">GalleryViewController.swift</text>
+
+  <!-- Code -->
+  <text x="40" y="74" class="ln">6</text>
+  <text x="58" y="74" class="code">    <tspan class="kw">override func</tspan> viewDidLayoutSubviews() {</text>
+  <text x="40" y="98" class="ln">7</text>
+  <text x="58" y="98" class="code">        <tspan class="kw">super</tspan>.viewDidLayoutSubviews()</text>
+  <text x="40" y="122" class="ln">8</text>
+  <text x="58" y="122" class="code">        <tspan class="kw">let</tspan> itemWidth = <tspan class="ty">UIScreen</tspan>.<tspan class="mem">main</tspan>.bounds.width / <tspan class="num">3</tspan></text>
+
+  <!-- DR001 warning -->
+  <rect x="56" y="136" width="826" height="58" rx="7" fill="#2a2414" stroke="#5c4a16"/>
+  <rect x="56" y="136" width="4" height="58" rx="2" fill="#f2b43c"/>
+  <text x="74" y="159" class="head" fill="#f2b43c">⚠ warning  DR001</text>
+  <text x="222" y="159" class="msg">UIScreen.main.bounds assumes a single, fixed screen.</text>
+  <text x="74" y="182" class="fix">Fix: use view.bounds or view.window?.bounds in UIKit, or GeometryReader in SwiftUI.</text>
+
+  <text x="40" y="218" class="ln">9</text>
+  <text x="40" y="242" class="ln">10</text>
+  <text x="58" y="242" class="code">        <tspan class="kw">if</tspan> <tspan class="ty">UIDevice</tspan>.current.<tspan class="mem">orientation</tspan>.isLandscape {</text>
+
+  <!-- DR002 error -->
+  <rect x="56" y="256" width="826" height="58" rx="7" fill="#2b1619" stroke="#6b2a31"/>
+  <rect x="56" y="256" width="4" height="58" rx="2" fill="#ff6b78"/>
+  <text x="74" y="279" class="head" fill="#ff6b78">✖ error    DR002</text>
+  <text x="222" y="279" class="msg">Layout branches on UIDevice.current.orientation, which does not</text>
+  <text x="222" y="297" class="msg">reflect the app's available space.</text>
+
+  <text x="40" y="338" class="ln">11</text>
+  <text x="58" y="338" class="code">            stack.axis = .horizontal</text>
+  <text x="40" y="362" class="ln">12</text>
+  <text x="58" y="362" class="code">        } <tspan class="kw">else</tspan> {</text>
+  <text x="40" y="386" class="ln">13</text>
+  <text x="58" y="386" class="code">            stack.axis = .vertical</text>
+  <text x="40" y="410" class="ln">14</text>
+  <text x="58" y="410" class="code">        }</text>
+
+  <!-- Footer -->
+  <line x1="0.5" y1="430" x2="899.5" y2="430" stroke="#232b40"/>
+  <text x="24" y="455" class="foot" fill="#9aa5c4"><tspan font-weight="700" fill="#d6deeb">duoready scan</tspan>   ·   this file: <tspan fill="#ff6b78">1 error</tspan>, <tspan fill="#f2b43c">1 warning</tspan>   ·   the error fails the check</text>
+</svg>

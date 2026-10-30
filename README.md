@@ -1,129 +1,135 @@
+<div align="center">
+
 # DuoReady
 
-DuoReady is an open-source static analyzer that finds adaptive-layout and resizability problems in
-SwiftUI and UIKit code. It flags assumptions such as "the app always fills one known screen" or
-"landscape means wide" before they ship.
+**Catch iOS layout bugs before your users do.**
 
-<!-- TODO before release: confirm Apple's official name and supported configurations for the
-     target device, and update this paragraph to match. -->
-DuoReady is built for iPhone Duo and for any device or configuration where an app's window can
-change size. Its rules check general adaptive-layout practice, not a specific device identifier.
+DuoReady scans your SwiftUI and UIKit code for layouts that break when an app's window
+changes size, and tells you exactly how to fix them.
 
-- **Runs locally.** Nothing is uploaded and there is no telemetry. A scan makes no network calls.
-- **No app changes.** DuoReady reads source files. It doesn't add a runtime dependency to your app,
-  and it never builds, runs or modifies your code.
-- **Made for CI.** It produces compiler-style text, JSON and GitHub pull-request annotations, with
-  separate exit codes for findings and for scanner failures.
+![Swift 6.0+](https://img.shields.io/badge/Swift-6.0%2B-F05138?logo=swift&logoColor=white)
+![macOS](https://img.shields.io/badge/platform-macOS-lightgrey)
+![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+![Status: early development](https://img.shields.io/badge/status-early%20development-orange)
 
-> **Status:** early development (`0.1.0-dev`). Six rules ship today; more are planned. See
-> [RULES.md](RULES.md).
+[Quick start](#-quick-start) · [Rules](RULES.md) · [GitHub Action](#-add-it-to-your-pull-requests) · [Contributing](CONTRIBUTING.md)
 
-## Quick start
+<br>
 
-DuoReady requires macOS and Swift 6.0 or later.
+<img src="docs/images/hero.svg" alt="DuoReady showing a warning under UIScreen.main.bounds and an error under a check on device orientation" width="820">
 
-```sh
-git clone https://github.com/YOUR_ORG/duoready.git
-cd duoready
-swift build -c release
-.build/release/duoready scan /path/to/YourApp
+</div>
+
+<br>
+
+## Why DuoReady?
+
+A lot of iOS code quietly assumes the app fills one fixed screen:
+
+```swift
+let width = UIScreen.main.bounds.width          // "the screen is my window"
+if UIDevice.current.orientation.isLandscape {…} // "landscape means wide"
+if UIDevice.current.userInterfaceIdiom == .pad {…} // "iPad means big"
 ```
 
-Example output:
+That held when every iPhone app ran full screen. It doesn't anymore. Windows get resized, split
+and shared, and devices like iPhone Duo change shape. Code like this clips, overflows or picks
+the wrong layout, and you usually don't find out until a user sends a screenshot.
+
+<!-- TODO before release: confirm Apple's official name and supported configurations for the
+     target device, and update the device reference above to match. -->
+
+**DuoReady finds these assumptions for you, explains why each one is risky, and shows the
+adaptive fix.**
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### 🔒 Private by design
+
+Runs entirely on your Mac or CI runner. No uploads, no account, no telemetry, no network calls.
+
+</td>
+<td width="33%" valign="top">
+
+### 🧩 Zero app changes
+
+Reads your source code only. Nothing to add to your app, and it never builds or runs your
+project.
+
+</td>
+<td width="33%" valign="top">
+
+### ✅ Built for teams
+
+Shows findings inline on pull requests, and a baseline lets large apps adopt it without
+fixing everything first.
+
+</td>
+</tr>
+</table>
+
+## 🚀 Quick start
+
+You need a Mac with Swift 6.0 or later, which comes with Xcode.
+
+**1. Install**
+
+```sh
+git clone https://github.com/YOUR_USERNAME/duoready.git
+cd duoready
+swift build -c release
+sudo cp .build/release/duoready /usr/local/bin/
+```
+
+<details>
+<summary>Other ways to install</summary>
+
+<br>
+
+- **[Mint](https://github.com/yonaskolb/Mint):** `mint install YOUR_USERNAME/duoready`
+- **Homebrew:** coming with the first release.
+
+</details>
+
+**2. Scan your app**
+
+```sh
+duoready scan path/to/YourApp
+```
+
+**3. Read the results**
 
 ```
 Views/GalleryViewController.swift:8:25: warning: [DR001] UIScreen.main.bounds assumes a single, fixed screen.
     Fix: Use the size of the containing view or window (view.bounds, view.window?.bounds) in UIKit, or GeometryReader / containerRelativeFrame in SwiftUI.
 
-Scanned 4 files: 1 warning.
+Scanned 42 files: 1 warning.
 ```
 
-## Commands
+Every finding shows the file and line, a rule ID you can look up, and a fix that fits the code it
+found. Add `--explain` to see why each pattern is risky.
 
-| Command | Purpose |
-| --- | --- |
-| `duoready scan [path]` | Scan a directory or `.swift` file (default `.`) |
-| `duoready scan . --format json` | Machine-readable output (`text`, `json`, `github`) |
-| `duoready scan . --severity warning` | Fail on findings at or above a severity |
-| `duoready scan . --config path.json` | Use a specific configuration file |
-| `duoready scan . --output report.json` | Write the report to a file |
-| `duoready scan . --explain` | Include each rule's rationale in text output |
-| `duoready scan . --no-baseline` | Report every finding, ignoring the baseline |
-| `duoready baseline [path]` | Record current findings so scans report only new ones |
-| `duoready rules [ID]` | List rules, or show one rule in detail |
-| `duoready config init` | Write a starter `.duoready.json` |
-| `duoready config validate` | Check a configuration file |
-| `duoready version` | Print the version |
+## 🔍 What it catches
 
-### Exit codes
+| Rule | Catches | Instead, use |
+| :-- | :-- | :-- |
+| [**DR001**](RULES.md#dr001) | `UIScreen.main` for sizes or scale | The view's or window's own bounds, `traitCollection.displayScale` |
+| [**DR002**](RULES.md#dr002) | Choosing a layout from device orientation | Size classes, the container's size, `ViewThatFits` |
+| [**DR003**](RULES.md#dr003) | Choosing sizes from iPhone vs iPad | Size classes, the container's size |
+| [**DR004**](RULES.md#dr004) | Detecting devices by screen size, like `height == 812` | Safe-area insets, size-based breakpoints |
+| [**DR005**](RULES.md#dr005) | Auto Layout constraints fixed to screen-sized values | Constraints relative to the container, maximum widths |
+| [**DR006**](RULES.md#dr006) | SwiftUI `.frame(width:)` the size of a whole screen | `maxWidth`, `containerRelativeFrame` |
 
-| Code | Meaning |
-| --- | --- |
-| `0` | Scan completed. No findings at or above the failure threshold. |
-| `1` | Scan completed. Findings crossed the threshold. |
-| `2` | Invalid arguments or configuration. |
-| `3` | The project could not be scanned. |
+DuoReady aims for findings you can trust over catching everything. Each rule skips the legitimate
+lookalikes: camera code that really needs orientation, fixed frames in previews, small icon sizes
+and macOS-only code. See [RULES.md](RULES.md) for the details and known limitations.
 
-## Configuration
+## 🤖 Add it to your pull requests
 
-DuoReady reads `.duoready.json` from the scanned directory if it exists.
-
-```json
-{
-  "version": 1,
-  "exclude": ["Pods/**", "build/**", "Vendor/**"],
-  "rules": {
-    "DR001": { "enabled": true, "severity": "warning" },
-    "DR002": { "severity": "error" }
-  },
-  "failOn": "error"
-}
-```
-
-- `exclude` takes globs relative to the scanned directory. `**` matches any depth, and a pattern
-  without `/` matches at any depth. `.build`, `.git`, `DerivedData`, `Pods`, `Carthage`, `build`
-  and `node_modules` are always skipped.
-- `rules` can enable or disable a rule and change its severity. An unknown rule ID is an error, so
-  typos don't fail silently.
-- `failOn` sets the default failure threshold. `--severity` overrides it.
-- `baseline` (optional) sets the baseline file's path, relative to the configuration file. The
-  default is `.duoready-baseline.json` in the scanned directory.
-
-To suppress a single finding, add a comment:
-
-```swift
-let scale = UIScreen.main.scale // duoready:ignore DR001
-
-// duoready:ignore DR002
-if UIDevice.current.orientation.isLandscape { … }
-```
-
-## Adopting DuoReady in an existing project
-
-A large app may have dozens of findings on day one. Instead of fixing them all before you can
-turn on CI, record them in a baseline:
-
-```sh
-duoready baseline .          # writes .duoready-baseline.json
-git add .duoready-baseline.json
-```
-
-From then on, `duoready scan` hides findings the baseline covers. It reports and fails only on
-new ones, and the summary says how many existing findings it hid.
-
-- **Matching ignores line numbers.** Each finding has a fingerprint built from its rule, its file
-  and the text of the flagged line, with whitespace ignored. Adding or removing code elsewhere in
-  the file doesn't break the match. Editing the flagged line or renaming the file makes the
-  finding new again, which is usually what you want.
-- **Fixed findings are reported as stale.** Rerun `duoready baseline` to remove them, and commit
-  the smaller file. The baseline should only ever shrink.
-- **Duplicates still count.** Each baseline entry hides one finding. If you copy a baselined
-  problem onto a second, identical line, the copy is reported.
-- **Scan the same root.** Paths in the baseline are relative to the scanned directory, so create
-  and use it with the same `path`.
-- `duoready scan --no-baseline` shows everything, including baselined findings.
-
-## GitHub Action
+Add this workflow as `.github/workflows/duoready.yml`. Findings then appear as annotations on
+the changed lines of every pull request.
 
 ```yaml
 name: DuoReady
@@ -135,45 +141,151 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: YOUR_ORG/duoready@v0.1.0
+      - uses: YOUR_USERNAME/duoready@v0.1.0
         with:
-          path: .
-          severity: error
+          severity: error   # fail the check on errors; warnings are shown but don't fail it
 ```
+
+<details>
+<summary>Action inputs</summary>
+
+<br>
 
 | Input | Default | Purpose |
 | --- | --- | --- |
 | `path` | `.` | Directory or file to scan |
 | `config` | | Configuration file |
-| `severity` | config `failOn` | Failure threshold |
+| `severity` | config `failOn` | Fail at or above this severity: `info`, `warning` or `error` |
 | `format` | `github` | `github`, `text` or `json` |
-| `upload-report` | `false` | Upload a JSON report as an artifact |
+| `upload-report` | `false` | Upload a JSON report as a workflow artifact |
 
-The action applies a committed baseline automatically, the same way `duoready scan` does. It
-builds the CLI from the commit you reference, so the scanner version always matches the
-action version. It needs only `contents: read`, and it never builds or runs the scanned project.
+The action builds DuoReady from the version you reference and needs only `contents: read`. It
+never builds or runs the code it scans.
 
-## How it works
+</details>
 
-DuoReady parses each Swift file with [SwiftSyntax](https://github.com/swiftlang/swift-syntax) and
-runs each rule over the syntax tree. Rules are pure functions from a parsed file to findings, and
-reporters handle presentation. A new rule therefore doesn't need changes to the CLI or the CI
-integration. See [CONTRIBUTING.md](CONTRIBUTING.md).
+## 📦 Using it on an existing app
 
-```
-Sources/
-  DuoReadyCore/       Finding model, rule protocol, file discovery, configuration, scanner
-  DuoReadyRules/      Built-in rules (UIKit/, SwiftUI/, Shared/)
-  DuoReadyReporters/  Text, JSON and GitHub output
-  DuoReadyCLI/        The duoready command
+Got 80 findings on day one? You don't have to fix them all before turning on CI. Record them in
+a **baseline**:
+
+```sh
+duoready baseline .
+git add .duoready-baseline.json
 ```
 
-## What DuoReady is not
+From then on, scans report and fail only on **new** findings. Fix the old ones at your own pace,
+then run `duoready baseline` again to shrink the file.
 
-- A guarantee that an app works in every configuration. It finds common, recognizable risks.
-- An automatic rewriter. The right fix depends on context, so DuoReady explains it instead.
-- A replacement for testing on real devices and in the simulator at different window sizes.
+<details>
+<summary>How baseline matching works</summary>
+
+<br>
+
+- Matching uses each finding's rule, file and line text, not its line number, so adding code
+  elsewhere in a file doesn't break it.
+- Editing the flagged line or renaming the file makes the finding new again.
+- When you fix a baselined finding, DuoReady says so and tells you to regenerate the file.
+- Each baseline entry hides one finding, so a copy of an old problem on a new line is still
+  reported.
+- Create and use the baseline with the same scan `path`.
+- `duoready scan --no-baseline` shows everything.
+
+</details>
+
+## ⚙️ Configuration
+
+Configuration is optional. To customize DuoReady, create `.duoready.json` in your project:
+
+```sh
+duoready config init
+```
+
+```json
+{
+  "version": 1,
+  "exclude": ["Pods/**", "Vendor/**"],
+  "rules": {
+    "DR002": { "severity": "error" },
+    "DR006": { "enabled": false }
+  },
+  "failOn": "error"
+}
+```
+
+To silence a single line that's intentional:
+
+```swift
+let scale = UIScreen.main.scale // duoready:ignore DR001
+```
+
+<details>
+<summary>All configuration options</summary>
+
+<br>
+
+| Key | Meaning |
+| --- | --- |
+| `exclude` | Globs relative to the scanned folder. `**` matches any depth. `.build`, `.git`, `DerivedData`, `Pods`, `Carthage`, `build` and `node_modules` are always skipped. |
+| `rules` | Enable or disable a rule, or change its severity. Unknown rule IDs are an error, so typos don't fail silently. |
+| `failOn` | The lowest severity that fails a scan. `--severity` overrides it. |
+| `baseline` | Path to the baseline file, relative to this file. Default: `.duoready-baseline.json`. |
+
+A `// duoready:ignore` comment on its own line applies to the next line. With no rule IDs, it
+silences every rule.
+
+</details>
+
+<details>
+<summary>All commands</summary>
+
+<br>
+
+| Command | Purpose |
+| --- | --- |
+| `duoready scan [path]` | Scan a folder or `.swift` file (default `.`) |
+| `duoready scan --format json` | Output as `text`, `json` or `github` annotations |
+| `duoready scan --severity warning` | Fail on findings at or above a severity |
+| `duoready scan --output report.json` | Write the report to a file |
+| `duoready scan --explain` | Include the reason behind each finding |
+| `duoready scan --no-baseline` | Show every finding, ignoring the baseline |
+| `duoready baseline [path]` | Record current findings so scans report only new ones |
+| `duoready rules [ID]` | List the rules, or explain one |
+| `duoready config init` | Create a starter `.duoready.json` |
+| `duoready config validate` | Check a configuration file |
+| `duoready version` | Print the version |
+
+**Exit codes:** `0` passed · `1` findings crossed the threshold · `2` invalid arguments or
+configuration · `3` the scan itself failed. CI can tell "your code has issues" apart from "the
+scanner broke."
+
+</details>
+
+## 🛠️ How it works
+
+DuoReady parses each Swift file with Apple's [SwiftSyntax](https://github.com/swiftlang/swift-syntax),
+the same parser the Swift compiler uses. It reads real code structure, not text patterns, so it
+can tell `UIScreen.main` in code from the same words in a comment or string. Each rule is a small,
+independently tested check, which makes adding a new one easy.
+
+**DuoReady is not:**
+
+- **A guarantee.** It finds common, recognizable risks. Keep testing at different window sizes.
+- **An auto-fixer.** The right fix depends on context, so it explains the fix instead of
+  rewriting your code.
+
+## 🤝 Contributing
+
+Contributions are welcome. The most valuable one is a **false-positive report**: if DuoReady
+flags code that's actually fine, [open an issue](../../issues/new/choose) with a small snippet.
+
+Want to write a rule? [CONTRIBUTING.md](CONTRIBUTING.md) walks through it, from proposal to tests
+and docs.
+
+```sh
+swift build && swift test
+```
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+[MIT](LICENSE). Free for personal and commercial use.
