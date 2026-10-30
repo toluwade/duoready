@@ -41,7 +41,17 @@ public struct FileEnumerator: Sendable {
         return ["Tests", "Test", "Spec", "Specs"].contains { stem.hasSuffix($0) }
     }
 
-    public func swiftFiles(in root: URL) throws -> (files: [Candidate], skipped: [ScanIssue]) {
+    /// Everything a scan reads, each list sorted by path.
+    public struct Discovery: Sendable {
+        public var swiftFiles: [Candidate] = []
+        /// `.plist` files, such as Info.plist.
+        public var propertyLists: [Candidate] = []
+        /// `project.pbxproj` files, which hold Xcode build settings.
+        public var projectFiles: [Candidate] = []
+        public var skipped: [ScanIssue] = []
+    }
+
+    public func discover(in root: URL) throws -> Discovery {
         let root = root.standardizedFileURL.resolvingSymlinksInPath()
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: root.path, isDirectory: &isDirectory) else {
@@ -51,7 +61,7 @@ public struct FileEnumerator: Sendable {
         // A single file can be scanned directly.
         if !isDirectory.boolValue {
             guard root.pathExtension == "swift" else { throw ScanError.notASwiftFile(root.path) }
-            return ([Candidate(url: root, relativePath: root.lastPathComponent)], [])
+            return Discovery(swiftFiles: [Candidate(url: root, relativePath: root.lastPathComponent)])
         }
 
         let keys: [URLResourceKey] = [.isDirectoryKey, .isSymbolicLinkKey, .isRegularFileKey, .fileSizeKey]
@@ -62,8 +72,7 @@ public struct FileEnumerator: Sendable {
         }
 
         let rootPrefix = root.path.hasSuffix("/") ? root.path : root.path + "/"
-        var files: [Candidate] = []
-        var skipped: [ScanIssue] = []
+        var discovery = Discovery()
 
         for case let url as URL in enumerator {
             let path = url.standardizedFileURL.path
@@ -81,21 +90,34 @@ public struct FileEnumerator: Sendable {
                     || isExcluded(relativePath + "/")
                 {
                     enumerator.skipDescendants()
+                } else if url.pathExtension == "xcodeproj" {
+                    // Xcode projects are packages, so the enumerator doesn't enter them.
+                    let project = url.appendingPathComponent("project.pbxproj")
+                    if FileManager.default.fileExists(atPath: project.path) {
+                        discovery.projectFiles.append(Candidate(url: project, relativePath: relativePath + "/project.pbxproj"))
+                    }
                 }
                 continue
             }
-            guard values?.isRegularFile == true, url.pathExtension == "swift" else { continue }
+            guard values?.isRegularFile == true, ["swift", "plist"].contains(url.pathExtension) else { continue }
             guard !isExcluded(relativePath) else { continue }
             if !includeTests, Self.isTestFile(url.lastPathComponent) { continue }
             if let size = values?.fileSize, size > Self.maximumFileSize {
-                skipped.append(ScanIssue(file: relativePath, message: "Skipped: file is larger than \(Self.maximumFileSize / 1024 / 1024) MB."))
+                discovery.skipped.append(ScanIssue(file: relativePath, message: "Skipped: file is larger than \(Self.maximumFileSize / 1024 / 1024) MB."))
                 continue
             }
-            files.append(Candidate(url: url, relativePath: relativePath))
+            let candidate = Candidate(url: url, relativePath: relativePath)
+            if url.pathExtension == "swift" {
+                discovery.swiftFiles.append(candidate)
+            } else {
+                discovery.propertyLists.append(candidate)
+            }
         }
 
-        files.sort { $0.relativePath < $1.relativePath }
-        return (files, skipped)
+        discovery.swiftFiles.sort { $0.relativePath < $1.relativePath }
+        discovery.propertyLists.sort { $0.relativePath < $1.relativePath }
+        discovery.projectFiles.sort { $0.relativePath < $1.relativePath }
+        return discovery
     }
 
     private func isExcluded(_ relativePath: String) -> Bool {

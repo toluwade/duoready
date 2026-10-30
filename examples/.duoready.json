@@ -12,7 +12,13 @@
     "DR003": { "enabled": true, "severity": "warning" },
     "DR004": { "enabled": true, "severity": "warning" },
     "DR005": { "enabled": true, "severity": "warning" },
-    "DR006": { "enabled": true, "severity": "info" }
+    "DR006": { "enabled": true, "severity": "info" },
+    "DR007": { "enabled": true, "severity": "warning" },
+    "DR008": { "enabled": true, "severity": "info" },
+    "DR009": { "enabled": true, "severity": "warning" },
+    "DR010": { "enabled": true, "severity": "warning" },
+    "DR011": { "enabled": true, "severity": "error" },
+    "DR012": { "enabled": true, "severity": "warning" }
   },
   "failOn": "error",
   "baseline": ".duoready-baseline.json"

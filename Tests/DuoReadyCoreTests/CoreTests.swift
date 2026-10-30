@@ -92,6 +92,28 @@ struct ScannerTests {
         #expect(Scanner(registry: registry).scan(file: file).map(\.line) == [4, 7])
     }
 
+    @Test("Honours file-wide suppressions without treating them as line suppressions")
+    func fileSuppressions() {
+        let some = SwiftSourceFile(relativePath: "A.swift", source: """
+            // duoready:ignore-file DR001
+            fixme()
+            """)
+        #expect(Scanner(registry: registry).scan(file: some).map(\.line) == [2])
+
+        let all = SwiftSourceFile(relativePath: "B.swift", source: """
+            fixme()
+            // duoready:ignore-file
+            fixme()
+            """)
+        #expect(Scanner(registry: registry).scan(file: all).isEmpty)
+
+        let mine = SwiftSourceFile(relativePath: "C.swift", source: """
+            fixme()
+            // duoready:ignore-file DR900
+            """)
+        #expect(Scanner(registry: registry).scan(file: mine).isEmpty)
+    }
+
     @Test("Walks directories deterministically, skipping excluded and generated code")
     func discovery() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("duoready-\(UUID())")

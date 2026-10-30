@@ -9,5 +9,11 @@ extension RuleRegistry {
         FixedScreenDimensionRule(),
         FixedSizeConstraintRule(),
         FixedFrameRule(),
+        CustomBarRule(),
+        TitleOnlyBarItemRule(),
+        ArrangementViewPlacementRule(),
+        RequiresFullScreenRule(),
+        SceneLifecycleRule(),
+        AppWideWindowRule(),
     ])
 }

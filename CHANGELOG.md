@@ -36,5 +36,12 @@ All notable changes to this project are documented here. The format follows
   the universal binary when a version tag is pushed.
 - swift-syntax 604, so DuoReady parses the newest Swift syntax. Versions 601 to 604 are
   supported.
+- iPhone Duo and iOS 27 rules: DR007 custom bars, DR008 title-only bar items, DR009
+  `ArrangementView` placement, DR010 `UIRequiresFullScreen`, DR011 scene life cycle and DR012
+  app-wide window lookups.
+- Project-level rules that read `.plist` files and Xcode build settings.
+- SARIF output for GitHub code scanning, and Markdown output. The Action can write SARIF and
+  writes a job summary.
+- `// duoready:ignore-file` suppresses a rule for a whole Swift file.
 - Installation with Mint, and a Homebrew formula template and release script for the
   `toluwade/tap` tap.

@@ -15,8 +15,16 @@ inputs:
     description: "Fail when findings are at or above this severity: info, warning or error. Defaults to failOn in the configuration."
     default: ""
   format:
-    description: "Log output format: github (inline annotations), text or json."
+    description: "Log output format: github (inline annotations), text, json, sarif or markdown."
     default: github
+  sarif:
+    description: >-
+      Also write a SARIF report to this path, for GitHub code scanning. Upload it with
+      github/codeql-action/upload-sarif so findings appear in the Security tab.
+    default: ""
+  summary:
+    description: Write a Markdown summary of the findings to the job summary page.
+    default: "true"
   upload-report:
     description: Also write a JSON report and upload it as a workflow artifact.
     default: "false"
@@ -28,6 +36,9 @@ outputs:
   report-path:
     description: Path of the JSON report, when upload-report is true.
     value: ${{ steps.scan.outputs.report-path }}
+  sarif-path:
+    description: Path of the SARIF report, when sarif is set.
+    value: ${{ steps.scan.outputs.sarif-path }}
 
 runs:
   using: composite
@@ -40,8 +51,10 @@ runs:
         INPUT_FORMAT: ${{ inputs.format }}
         INPUT_SEVERITY: ${{ inputs.severity }}
         INPUT_UPLOAD: ${{ inputs.upload-report }}
+        INPUT_SUMMARY: ${{ inputs.summary }}
       run: |
-        case "$INPUT_FORMAT" in github|text|json) ;; *) echo "::error::format must be github, text or json"; exit 2 ;; esac
+        case "$INPUT_FORMAT" in github|text|json|sarif|markdown) ;; *) echo "::error::format must be github, text, json, sarif or markdown"; exit 2 ;; esac
+        case "$INPUT_SUMMARY" in true|false) ;; *) echo "::error::summary must be true or false"; exit 2 ;; esac
         case "$INPUT_SEVERITY" in ""|info|warning|error) ;; *) echo "::error::severity must be info, warning or error"; exit 2 ;; esac
         case "$INPUT_UPLOAD" in true|false) ;; *) echo "::error::upload-report must be true or false"; exit 2 ;; esac
 
@@ -107,6 +120,8 @@ runs:
         INPUT_FORMAT: ${{ inputs.format }}
         INPUT_SEVERITY: ${{ inputs.severity }}
         INPUT_UPLOAD: ${{ inputs.upload-report }}
+        INPUT_SARIF: ${{ inputs.sarif }}
+        INPUT_SUMMARY: ${{ inputs.summary }}
       run: |
         args=(scan "$INPUT_PATH")
         [ -n "$INPUT_CONFIG" ] && args+=(--config "$INPUT_CONFIG")
@@ -116,6 +131,14 @@ runs:
           report="$RUNNER_TEMP/duoready-report.json"
           "$DUOREADY_BIN" "${args[@]}" --format json --output "$report" || true
           echo "report-path=$report" >> "$GITHUB_OUTPUT"
+        fi
+        # Extra reports never fail the step; the main scan below decides that.
+        if [ -n "$INPUT_SARIF" ]; then
+          "$DUOREADY_BIN" "${args[@]}" --format sarif --output "$INPUT_SARIF" || true
+          echo "sarif-path=$INPUT_SARIF" >> "$GITHUB_OUTPUT"
+        fi
+        if [ "$INPUT_SUMMARY" = "true" ]; then
+          "$DUOREADY_BIN" "${args[@]}" --format markdown >> "$GITHUB_STEP_SUMMARY" || true
         fi
 
         set +e

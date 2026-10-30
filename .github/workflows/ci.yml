@@ -33,6 +33,7 @@ jobs:
         with:
           path: Tests/DuoReadyIntegrationTests/Fixtures/SampleApp
           upload-report: "true"
+          sarif: duoready.sarif
       - name: Expect findings to fail the check
         env:
           OUTCOME: ${{ steps.duoready.outcome }}
@@ -40,3 +41,4 @@ jobs:
         run: |
           test "$OUTCOME" = "failure"
           test "$EXIT_CODE" = "1"
+          python3 -c "import json; d = json.load(open('duoready.sarif')); assert d['version'] == '2.1.0' and d['runs'][0]['results']"

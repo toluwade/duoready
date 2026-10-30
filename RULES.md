@@ -9,7 +9,8 @@ configuration, suppressions and issue trackers. Run `duoready rules <ID>` for th
 your terminal.
 
 To silence one occurrence, add `// duoready:ignore DR001` at the end of the line, or on its own on
-the line above. To change a rule everywhere, use `.duoready.json`:
+the line above. To silence a rule for a whole Swift file, add `// duoready:ignore-file DR001`
+anywhere in it. To change a rule everywhere, use `.duoready.json`:
 
 ```json
 { "version": 1, "rules": { "DR002": { "enabled": false } } }
@@ -23,6 +24,12 @@ the line above. To change a rule everywhere, use `.duoready.json`:
 | [DR004](#dr004) | Fixed screen dimensions used for layout decisions | warning | high |
 | [DR005](#dr005) | Constraints that pin content to screen-sized constants | warning | medium |
 | [DR006](#dr006) | SwiftUI frames with screen-sized fixed dimensions | info | medium |
+| [DR007](#dr007) | Custom bars the system can't present vertically | warning | high |
+| [DR008](#dr008) | Bar items with a title but no icon | info | high |
+| [DR009](#dr009) | `ArrangementView` inside a list, scroll view or split view | warning | high |
+| [DR010](#dr010) | `UIRequiresFullScreen` no longer prevents resizing | warning | high |
+| [DR011](#dr011) | UIKit app without the scene life cycle | error | medium |
+| [DR012](#dr012) | App-wide window lookups | warning | high |
 
 ---
 
@@ -294,3 +301,219 @@ Or use `containerRelativeFrame` or `GeometryReader` when the size really depends
 
 Only literal values are checked. A fixed frame inside a scroll view can be intentional, which is
 why this rule defaults to `info`.
+
+---
+
+## DR007
+
+**Custom bars the system can't present vertically** · UIKit · warning · high confidence
+
+### Why
+
+On iPhone Duo, the system presents navigation bars, toolbars and tab bars vertically on the side of
+the display in some poses. It can only do that for bars it manages. Apple's
+[iPhone Duo guidance](https://developer.apple.com/documentation/technologyoverviews/preparing-your-app-for-iphone-duo)
+says to "set toolbar items on a view controller that you add to a navigation controller, instead of
+creating a custom bar for your view based on UIToolbar, UINavigationBar, or UITabBar."
+
+### Flagged
+
+```swift
+let toolbar = UIToolbar()
+view.addSubview(toolbar)
+```
+
+### Not flagged
+
+- Subclasses, such as a branded bar passed to `UINavigationController(navigationBarClass:toolbarClass:)`.
+- `UIToolbar` in files that set an `inputAccessoryView`, where a toolbar above the keyboard is expected.
+
+### Fix
+
+```swift
+toolbarItems = [shareItem, .flexibleSpace(), deleteItem]
+navigationController?.setToolbarHidden(false, animated: false)
+```
+
+### Limitations
+
+Bars created in Interface Builder are not detected.
+
+---
+
+## DR008
+
+**Bar items with a title but no icon** · UIKit and SwiftUI · info · high confidence
+
+### Why
+
+When iPhone Duo presents bars vertically, it shows items as icons. Apple: "If your item has a
+title and doesn't have an icon, the system doesn't present it vertically." Items with both work in
+every pose, because the system chooses the title or the icon to fit.
+
+### Flagged
+
+```swift
+.toolbar { Button("Edit") { edit() } }
+UIBarButtonItem(title: "Sort", style: .plain, target: self, action: #selector(sort))
+```
+
+### Not flagged
+
+- Buttons inside a `Menu`, which shows titles anyway.
+- Items with `cancellationAction`, `confirmationAction`, `destructiveAction`, `keyboard`, `principal`
+  or `status` placement.
+- Back-button items (`backBarButtonItem`) and empty titles.
+- UIKit items in files that set an `inputAccessoryView` (keyboard toolbars).
+
+### Fix
+
+```swift
+.toolbar { Button("Edit", systemImage: "pencil") { edit() } }
+UIBarButtonItem(title: "Sort", image: UIImage(systemName: "arrow.up.arrow.down"), primaryAction: sortAction)
+```
+
+### Limitations
+
+Items built in a separate view or helper function are not seen. This rule is `info` because a
+hidden item may still be reachable another way.
+
+---
+
+## DR009
+
+**`ArrangementView` inside a list, scroll view or split view** · SwiftUI · warning · high confidence
+
+### Why
+
+An arrangement view lays out a primary and a secondary view around iPhone Duo's fold. Apple: "Avoid
+placing an arrangement view inside a navigation split view, list, scroll view, or other container
+that might cause part of your view to become inaccessible."
+
+### Flagged
+
+```swift
+ScrollView {
+    ArrangementView { MapView() } secondary: { DetailsView() }
+}
+```
+
+### Fix
+
+Make the arrangement view the outer container, and scroll inside it:
+
+```swift
+ArrangementView {
+    MapView()
+} secondary: {
+    ScrollView { DetailsView() }
+}
+```
+
+### Limitations
+
+Only containers written in the same view body are seen. An arrangement view in its own view type,
+which a list contains elsewhere, is not reported.
+
+---
+
+## DR010
+
+**`UIRequiresFullScreen` no longer prevents resizing** · project configuration · warning · high confidence
+
+### Why
+
+`UIRequiresFullScreen` is deprecated. Apple's
+[TN3192](https://developer.apple.com/documentation/technotes/tn3192-migrating-your-app-from-the-deprecated-uirequiresfullscreen-key):
+"Starting in iOS 27 and iPadOS 27, `UIRequiresFullScreen` no longer opts your app out of resizing
+on either platform. Instead, the system resizes your app's scene discretely." This applies when you
+build with the iOS 27 SDK, so an app that relied on the key is resized anyway, on iPhone Duo and
+on iPad.
+
+### Flagged
+
+- `<key>UIRequiresFullScreen</key><true/>` in any `.plist` in the scanned folder.
+- `INFOPLIST_KEY_UIRequiresFullScreen = YES` in an Xcode project's build settings.
+
+### Not flagged
+
+- A plist that also sets `UIRequiresFullScreenIgnoredStartingWithVersion`, because its migration is
+  already planned.
+
+### Fix
+
+Make your layouts resizable (the other rules help), then remove the key or build setting. TN3192
+describes `UIRequiresFullScreenIgnoredStartingWithVersion` if you need more time.
+
+### Limitations
+
+Settings in `.xcconfig` files, and Info.plist files outside the scanned folder, are not read.
+
+---
+
+## DR011
+
+**UIKit app without the scene life cycle** · project configuration · error · medium confidence
+
+### Why
+
+Apple's
+[TN3187](https://developer.apple.com/documentation/technotes/tn3187-migrating-to-the-uikit-scene-based-life-cycle):
+"In the next major release following iOS 26, UIScene lifecycle will be required when building with
+the latest SDK; otherwise, your app won't launch." Scenes are also what lets the system resize an
+app and move it between iPhone Duo's displays.
+
+### Flagged
+
+A Swift app delegate marked `@main` or `@UIApplicationMain`, including subclasses of framework app
+delegates such as `FlutterAppDelegate`, when the scanned folder has none of:
+
+- a `UIApplicationSceneManifest` with scene configurations in a `.plist`,
+- an implementation of `application(_:configurationForConnecting:options:)`,
+- a SwiftUI `App`, or
+- the `INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES` build setting.
+
+### Fix
+
+Add a scene manifest with one configuration and a `UIWindowSceneDelegate`, and move window setup
+from the app delegate into the scene delegate. A single scene is enough. TN3187 walks through it.
+
+### Limitations
+
+Objective-C app delegates are not read. Scan the whole app so its Info.plist is included;
+scanning only a subfolder can produce a false report, which `// duoready:ignore DR011` on the app
+delegate silences.
+
+---
+
+## DR012
+
+**App-wide window lookups** · UIKit · warning · high confidence
+
+### Why
+
+iPhone Duo can run two apps side by side in Split View, and show two windows of the same app.
+App-wide lookups such as `UIApplication.shared.keyWindow`, `.windows` or `connectedScenes.first`
+return an arbitrary window, which may not be the one your view is in or have its size. `keyWindow`
+and `windows` are also deprecated.
+
+### Flagged
+
+```swift
+let width = UIApplication.shared.windows.first?.bounds.width
+let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive })
+```
+
+### Not flagged
+
+- `connectedScenes.first?.delegate`, which reaches app state rather than a window.
+- A scene's own `windows`, such as `view.window?.windowScene?.windows`.
+
+### Fix
+
+Use the window your UI is in: `view.window`, `view.window?.windowScene`, or the scene passed to
+your scene delegate.
+
+### Limitations
+
+A window or scene stored earlier and passed around is not tracked.

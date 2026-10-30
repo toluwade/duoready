@@ -2,10 +2,10 @@
 
 # DuoReady
 
-**Catch iOS layout bugs before your users do.**
+**Get your iOS app ready for iPhone Duo, and keep it ready on every pull request.**
 
 DuoReady scans your SwiftUI and UIKit code for layouts that break when an app's window
-changes size, and tells you exactly how to fix them.
+changes size, on iPhone Duo, in Split View and on iPad, and tells you exactly how to fix them.
 
 ![Swift 6.0+](https://img.shields.io/badge/Swift-6.0%2B-F05138?logo=swift&logoColor=white)
 ![macOS](https://img.shields.io/badge/platform-macOS-lightgrey)
@@ -24,51 +24,62 @@ changes size, and tells you exactly how to fix them.
 
 ## Why DuoReady?
 
-A lot of iOS code quietly assumes the app fills one fixed screen:
+[iPhone Duo](https://www.apple.com/newsroom/2026/09/apple-unveils-iphone-duo/) unfolds from a
+5.4-inch display to a 7.6-inch one, runs two apps side by side, and moves bars to the side of the
+screen. Apps built with the iOS 27 SDK resize to fit, and a lot of iOS code quietly assumes they
+never will:
 
 ```swift
-let width = UIScreen.main.bounds.width          // "the screen is my window"
-if UIDevice.current.orientation.isLandscape {…} // "landscape means wide"
-if UIDevice.current.userInterfaceIdiom == .pad {…} // "iPad means big"
+let width = UIScreen.main.bounds.width              // "the screen is my window"
+if UIDevice.current.orientation.isLandscape {…}     // "landscape means wide"
+if UIDevice.current.userInterfaceIdiom == .phone {…} // "a phone is narrow", even unfolded
 ```
 
-That held when every iPhone app ran full screen. It doesn't anymore. Windows get resized, split
-and shared, and devices like iPhone Duo change shape. Code like this clips, overflows or picks
-the wrong layout, and you usually don't find out until a user sends a screenshot.
-
-<!-- TODO before release: confirm Apple's official name and supported configurations for the
-     target device, and update the device reference above to match. -->
-
-**DuoReady finds these assumptions for you, explains why each one is risky, and shows the
-adaptive fix.**
+Apple's [iPhone Duo guidance](https://developer.apple.com/documentation/technologyoverviews/preparing-your-app-for-iphone-duo)
+says to stop doing exactly this. **DuoReady finds these assumptions, explains why each one is
+risky, and shows the adaptive fix.**
 
 <table>
 <tr>
 <td width="33%" valign="top">
 
+### 🎯 Measured accuracy
+
+Every rule is tuned against real open-source apps, including Wikipedia, Ice Cubes and Kickstarter, and
+skips the legitimate lookalikes. Test code is skipped by default.
+
+</td>
+<td width="33%" valign="top">
+
+### ⚡ Seconds, not minutes
+
+Scans 4,000 files in about 3 seconds. The GitHub Action uses a prebuilt, checksum-verified
+binary or a cached build, so a check takes seconds instead of minutes.
+
+</td>
+<td width="33%" valign="top">
+
 ### 🔒 Private by design
 
-Runs entirely on your Mac or CI runner. No uploads, no account, no telemetry, no network calls.
-
-</td>
-<td width="33%" valign="top">
-
-### 🧩 Zero app changes
-
-Reads your source code only. Nothing to add to your app, and it never builds or runs your
-project.
-
-</td>
-<td width="33%" valign="top">
-
-### ✅ Built for teams
-
-Shows findings inline on pull requests, and a baseline lets large apps adopt it without
-fixing everything first.
+Runs on your Mac or CI runner. No uploads, no account, no telemetry. It reads your source and
+never builds or runs your project.
 
 </td>
 </tr>
 </table>
+
+### How it fits with Xcode's App Resizability skill
+
+Xcode 27.1's coding assistant can scan a project for iPhone Duo problems and suggest fixes. Use it
+to get ready. Use DuoReady to **stay** ready:
+
+| | Xcode App Resizability skill | DuoReady |
+| --- | --- | --- |
+| Runs | When you ask, in Xcode | On every pull request, and from the terminal |
+| Results | A conversation | Stable rule IDs, inline PR annotations, SARIF for the Security tab |
+| Same code, same findings | Not guaranteed | Always: deterministic, with a CI exit code |
+| Existing apps | Fix everything in one session | Baseline today's findings, fail only on new ones |
+| Needs | Xcode 27.1 and its assistant | A Mac with Swift, nothing else |
 
 ## 🚀 Quick start
 
@@ -135,6 +146,8 @@ found. Add `--explain` to see why each pattern is risky.
 
 ## 🔍 What it catches
 
+**Layouts that assume a fixed screen**
+
 | Rule | Catches | Instead, use |
 | :-- | :-- | :-- |
 | [**DR001**](RULES.md#dr001) | `UIScreen.main` for sizes or scale | The view's or window's own bounds, `traitCollection.displayScale` |
@@ -144,10 +157,21 @@ found. Add `--explain` to see why each pattern is risky.
 | [**DR005**](RULES.md#dr005) | Auto Layout constraints fixed to screen-sized values | Constraints relative to the container, maximum widths |
 | [**DR006**](RULES.md#dr006) | SwiftUI `.frame(width:)` the size of a whole screen | `maxWidth`, `containerRelativeFrame` |
 
+**iPhone Duo and iOS 27 specifics**, each based on Apple's own guidance
+
+| Rule | Catches | Why it matters |
+| :-- | :-- | :-- |
+| [**DR007**](RULES.md#dr007) | Hand-made `UIToolbar`, `UINavigationBar` or `UITabBar` | The system can't move them to the side of the display |
+| [**DR008**](RULES.md#dr008) | Bar items with a title but no icon | Hidden when bars go vertical |
+| [**DR009**](RULES.md#dr009) | `ArrangementView` inside a `List` or `ScrollView` | Part of it can become unreachable around the fold |
+| [**DR010**](RULES.md#dr010) | `UIRequiresFullScreen` in Info.plist or build settings | No longer prevents resizing with the iOS 27 SDK ([TN3192](https://developer.apple.com/documentation/technotes/tn3192-migrating-your-app-from-the-deprecated-uirequiresfullscreen-key)) |
+| [**DR011**](RULES.md#dr011) | A UIKit app without the scene life cycle | Won't launch when built with the iOS 27 SDK ([TN3187](https://developer.apple.com/documentation/technotes/tn3187-migrating-to-the-uikit-scene-based-life-cycle)) |
+| [**DR012**](RULES.md#dr012) | `keyWindow`, `windows`, `connectedScenes.first` | Picks an arbitrary window in Split View |
+
 DuoReady aims for findings you can trust over catching everything. Each rule skips the legitimate
 lookalikes: camera code that really needs orientation, conditions that already check size
-classes, fixed frames in previews, small icon sizes, test code and macOS-only code. See
-[RULES.md](RULES.md) for the details and known limitations.
+classes, keyboard toolbars, fixed frames in previews, small icon sizes, test code and macOS-only
+code. See [RULES.md](RULES.md) for the details and known limitations.
 
 ## 🤖 Add it to your pull requests
 
@@ -169,6 +193,32 @@ jobs:
           severity: error   # fail the check on errors; warnings are shown but don't fail it
 ```
 
+Each run also writes a summary table to the job's summary page.
+
+<details>
+<summary>Show findings in the Security tab with SARIF</summary>
+
+<br>
+
+GitHub code scanning keeps findings open until they're fixed and shows them across branches:
+
+```yaml
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: toluwade/duoready@v0.1.0
+        with:
+          sarif: duoready.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: duoready.sarif
+```
+
+</details>
+
 <details>
 <summary>Action inputs</summary>
 
@@ -179,7 +229,9 @@ jobs:
 | `path` | `.` | Directory or file to scan |
 | `config` | | Configuration file |
 | `severity` | config `failOn` | Fail at or above this severity: `info`, `warning` or `error` |
-| `format` | `github` | `github`, `text` or `json` |
+| `format` | `github` | `github`, `text`, `json`, `sarif` or `markdown` |
+| `sarif` | | Also write a SARIF report to this path |
+| `summary` | `true` | Write a Markdown summary to the job summary page |
 | `upload-report` | `false` | Upload a JSON report as a workflow artifact |
 
 For a release tag such as `@v0.1.0`, the action downloads that version's prebuilt binary and
@@ -238,10 +290,12 @@ duoready config init
 }
 ```
 
-To silence a single line that's intentional:
+To silence a single line that's intentional, or a rule in a whole file:
 
 ```swift
 let scale = UIScreen.main.scale // duoready:ignore DR001
+
+// duoready:ignore-file DR008
 ```
 
 <details>
@@ -270,7 +324,7 @@ silences every rule.
 | Command | Purpose |
 | --- | --- |
 | `duoready scan [path]` | Scan a folder or `.swift` file (default `.`) |
-| `duoready scan --format json` | Output as `text`, `json` or `github` annotations |
+| `duoready scan --format sarif` | Output as `text`, `json`, `github` annotations, `sarif` or `markdown` |
 | `duoready scan --severity warning` | Fail on findings at or above a severity |
 | `duoready scan --output report.json` | Write the report to a file |
 | `duoready scan --explain` | Include the reason behind each finding |
@@ -291,7 +345,8 @@ scanner broke."
 ## 🛠️ How it works
 
 DuoReady parses each Swift file with Apple's [SwiftSyntax](https://github.com/swiftlang/swift-syntax),
-the same parser the Swift compiler uses. It reads real code structure, not text patterns, so it
+the same parser the Swift compiler uses, and reads Info.plist files and Xcode build settings for
+project-level rules. It reads real code structure, not text patterns, so it
 can tell `UIScreen.main` in code from the same words in a comment or string. Each rule is a small,
 independently tested check, which makes adding a new one easy.
 

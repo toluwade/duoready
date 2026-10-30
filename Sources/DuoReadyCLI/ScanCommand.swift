@@ -1,6 +1,7 @@
 import ArgumentParser
 import DuoReadyCore
 import DuoReadyReporters
+import DuoReadyRules
 import Foundation
 
 extension ReportFormat: ExpressibleByArgument {}
@@ -21,7 +22,7 @@ struct ScanCommand: ParsableCommand {
 
     @OptionGroup var project: ProjectOptions
 
-    @Option(name: .shortAndLong, help: "Output format: text, json or github.")
+    @Option(name: .shortAndLong, help: "Output format: text, json, github, sarif or markdown.")
     var format: ReportFormat = .text
 
     @Option(name: .shortAndLong, help: "Fail when findings are at or above this severity: info, warning or error. Overrides failOn in the configuration.")
@@ -93,6 +94,8 @@ struct ScanCommand: ParsableCommand {
         case .text: TextReporter(includeExplanations: explain)
         case .json: JSONReporter()
         case .github: GitHubReporter(pathPrefix: repositoryRelativePrefix())
+        case .sarif: SARIFReporter(rules: RuleRegistry.builtIn.rules.map(\.metadata), pathPrefix: repositoryRelativePrefix())
+        case .markdown: MarkdownReporter(rules: RuleRegistry.builtIn.rules.map(\.metadata), pathPrefix: repositoryRelativePrefix())
         }
     }
 

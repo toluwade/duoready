@@ -73,14 +73,14 @@ public struct Scanner: Sendable {
         } catch {
             throw ScanError.invalidExcludePattern(configuration.exclude.joined(separator: ", "))
         }
-        let (candidates, skipped) = try enumerator.swiftFiles(in: root)
+        let discovery = try enumerator.discover(in: root)
+        let projectRules = registry.projectRules.filter { configuration.isEnabled($0.metadata.id) }
 
         var findings: [Finding] = []
-        var issues = skipped
-        for candidate in candidates {
-            guard let data = FileManager.default.contents(atPath: candidate.url.path),
-                  let source = String(data: data, encoding: .utf8)
-            else {
+        var issues = discovery.skipped
+        var notes: [String: [ProjectNote]] = [:]
+        for candidate in discovery.swiftFiles {
+            guard let source = readText(candidate) else {
                 issues.append(ScanIssue(file: candidate.relativePath, message: "Skipped: not readable as UTF-8."))
                 continue
             }
@@ -89,22 +89,50 @@ public struct Scanner: Sendable {
                 issues.append(ScanIssue(file: file.relativePath, message: "Contains syntax errors; findings may be incomplete."))
             }
             findings += scan(file: file)
+
+            let suppressions = Suppressions(file: file)
+            for rule in projectRules {
+                let id = rule.metadata.id
+                notes[id, default: []] += rule.notes(for: file).filter { !suppressions.suppresses(ruleID: id, line: $0.line) }
+            }
         }
 
-        return ScanResult(findings: findings.sorted(), issues: issues, filesScanned: candidates.count)
+        if !projectRules.isEmpty {
+            let propertyLists = discovery.propertyLists.compactMap { candidate -> PropertyListFile? in
+                guard let data = FileManager.default.contents(atPath: candidate.url.path) else { return nil }
+                return PropertyListFile(relativePath: candidate.relativePath, data: data)
+            }
+            let projectSettings = discovery.projectFiles.compactMap { candidate in
+                readText(candidate).map { ProjectSettingsFile(relativePath: candidate.relativePath, text: $0) }
+            }
+            for rule in projectRules {
+                let context = ProjectContext(
+                    notes: notes[rule.metadata.id] ?? [], propertyLists: propertyLists, projectSettings: projectSettings
+                )
+                let severity = configuration.severity(for: rule.metadata)
+                findings += rule.check(context).map { $0.with(severity: severity) }
+            }
+        }
+
+        return ScanResult(findings: findings.sorted(), issues: issues, filesScanned: discovery.swiftFiles.count)
     }
 
-    /// Runs every enabled rule on one file, applying severity overrides and
-    /// inline suppressions.
+    /// Runs every enabled Swift rule on one file, applying severity overrides
+    /// and inline suppressions. Project rules need the whole project, so they
+    /// only run in ``scan(root:)``.
     public func scan(file: SwiftSourceFile) -> [Finding] {
         let suppressions = Suppressions(file: file)
         var results: [Finding] = []
-        for rule in registry.rules where configuration.isEnabled(rule.metadata.id) {
+        for rule in registry.swiftRules where configuration.isEnabled(rule.metadata.id) {
             let severity = configuration.severity(for: rule.metadata)
             for finding in rule.check(file) where !suppressions.suppresses(finding) {
                 results.append(finding.with(severity: severity))
             }
         }
         return results.sorted()
+    }
+
+    private func readText(_ candidate: FileEnumerator.Candidate) -> String? {
+        FileManager.default.contents(atPath: candidate.url.path).flatMap { String(data: $0, encoding: .utf8) }
     }
 }

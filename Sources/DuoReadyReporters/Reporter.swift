@@ -9,6 +9,8 @@ public enum ReportFormat: String, CaseIterable, Sendable {
     case text
     case json
     case github
+    case sarif
+    case markdown
 }
 
 extension Severity {

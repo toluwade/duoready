@@ -1,3 +1,4 @@
+import DuoReadyCore
 import Foundation
 import SwiftSyntax
 
@@ -210,5 +211,53 @@ extension SyntaxProtocol {
             current = node.parent
         }
         return nil
+    }
+}
+
+extension FunctionCallExprSyntax {
+    /// The type or function being called: `UIToolbar` for both
+    /// `UIToolbar(frame: .zero)` and `UIToolbar.init()`, `Button` for `Button("Edit") {}`.
+    var calledName: String? {
+        if let reference = calledExpression.as(DeclReferenceExprSyntax.self) {
+            return reference.baseName.text
+        }
+        if let member = calledExpression.as(MemberAccessExprSyntax.self), member.declName.baseName.text == "init",
+           let base = member.base?.as(DeclReferenceExprSyntax.self)
+        {
+            return base.baseName.text
+        }
+        return nil
+    }
+
+    /// The modifier name for calls like `.toolbar { … }` or `view.toolbar { … }`.
+    var modifierName: String? {
+        calledExpression.as(MemberAccessExprSyntax.self)?.declName.baseName.text
+    }
+}
+
+extension SyntaxProtocol {
+    /// Function calls whose arguments or closures contain this node, innermost
+    /// first, without leaving the enclosing type or function declaration.
+    ///
+    /// A call this node is only the receiver of doesn't count: in
+    /// `VStack { Button("Go") }.toolbar { … }` the button is not in the toolbar.
+    var enclosingCalls: [FunctionCallExprSyntax] {
+        var calls: [FunctionCallExprSyntax] = []
+        var child = Syntax(self)
+        while let node = child.parent {
+            if node.is(MemberBlockSyntax.self) || node.is(FunctionDeclSyntax.self) { break }
+            if let call = node.as(FunctionCallExprSyntax.self), call.calledExpression.id != child.id {
+                calls.append(call)
+            }
+            child = node
+        }
+        return calls
+    }
+}
+
+extension SwiftSourceFile {
+    /// Whether any identifier in the file has this exact name.
+    func mentions(_ identifier: String) -> Bool {
+        tree.tokens(viewMode: .sourceAccurate).contains { $0.tokenKind == .identifier(identifier) }
     }
 }
