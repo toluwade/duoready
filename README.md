@@ -3,14 +3,14 @@
 <img src="docs/images/banner.png" alt="DuoReady: Get your iOS app ready for iPhone Duo, and keep it ready." width="100%">
 
 DuoReady scans your SwiftUI and UIKit code for layouts that break when an app's window
-changes size, on iPhone Duo, in Split View and on iPad, and tells you exactly how to fix them.
+changes size, on iPhone Duo, in Split View and on iPad, and tells you how to fix them.
 
 ![Swift 6.0+](https://img.shields.io/badge/Swift-6.0%2B-F05138?logo=swift&logoColor=white)
 ![macOS](https://img.shields.io/badge/platform-macOS-lightgrey)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 ![Status: early development](https://img.shields.io/badge/status-early%20development-orange)
 
-[Quick start](#-quick-start) · [Rules](RULES.md) · [GitHub Action](#-add-it-to-your-pull-requests) · [Contributing](CONTRIBUTING.md)
+[Quick start](#quick-start) · [Rules](RULES.md) · [GitHub Action](#add-it-to-your-pull-requests) · [Contributing](CONTRIBUTING.md)
 
 <br>
 
@@ -34,32 +34,32 @@ if UIDevice.current.userInterfaceIdiom == .phone {…} // "a phone is narrow", e
 ```
 
 Apple's [iPhone Duo guidance](https://developer.apple.com/documentation/technologyoverviews/preparing-your-app-for-iphone-duo)
-says to stop doing exactly this. **DuoReady finds these assumptions, explains why each one is
-risky, and shows the adaptive fix.**
+says to stop doing this. DuoReady finds these assumptions, explains why each one is
+risky, and shows the adaptive fix.
 
 <table>
 <tr>
 <td width="33%" valign="top">
 
-### 🎯 Measured accuracy
+### Tested on real apps
 
-Every rule is tuned against real open-source apps, including Wikipedia, Ice Cubes and Kickstarter, and
-skips the legitimate lookalikes. Test code is skipped by default.
+Every rule was tuned on open-source apps like Wikipedia, Ice Cubes and Kickstarter, and
+skips code that only looks risky. Test code is skipped by default.
 
 </td>
 <td width="33%" valign="top">
 
-### ⚡ Seconds, not minutes
+### Fast
 
 Scans 4,000 files in about 3 seconds. The GitHub Action uses a prebuilt, checksum-verified
-binary or a cached build, so a check takes seconds instead of minutes.
+binary or a cached build, so most runs finish in a few seconds.
 
 </td>
 <td width="33%" valign="top">
 
-### 🔒 Private by design
+### Runs locally
 
-Runs on your Mac or CI runner. No uploads, no account, no telemetry. It reads your source and
+Everything runs on your Mac or CI runner. Nothing is uploaded, and there is no account or telemetry. It reads your source and
 never builds or runs your project.
 
 </td>
@@ -79,7 +79,7 @@ to get ready. Use DuoReady to **stay** ready:
 | Existing apps | Fix everything in one session | Baseline today's findings, fail only on new ones |
 | Needs | Xcode 27.1 and its assistant | A Mac with Swift, nothing else |
 
-## 🚀 Quick start
+## Quick start
 
 You need a Mac with Swift 6.0 or later, which comes with Xcode.
 
@@ -106,7 +106,7 @@ mint install toluwade/duoready
 repository:
 
 ```
-toluwade/duoready@v0.1.0
+toluwade/duoready@v0.1.1
 ```
 
 Everyone then runs the same version with `mint run duoready scan .`
@@ -142,7 +142,7 @@ Scanned 42 files: 1 warning.
 Every finding shows the file and line, a rule ID you can look up, and a fix that fits the code it
 found. Add `--explain` to see why each pattern is risky.
 
-## 🔍 What it catches
+## What it catches
 
 **Layouts that assume a fixed screen**
 
@@ -171,7 +171,7 @@ lookalikes: camera code that really needs orientation, conditions that already c
 classes, keyboard toolbars, fixed frames in previews, small icon sizes, test code and macOS-only
 code. See [RULES.md](RULES.md) for the details and known limitations.
 
-## 🤖 Add it to your pull requests
+## Add it to your pull requests
 
 Add this workflow as `.github/workflows/duoready.yml`. Findings then appear as annotations on
 the changed lines of every pull request.
@@ -186,7 +186,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: toluwade/duoready@v0.1.0
+      - uses: toluwade/duoready@v0.1.1
         with:
           severity: error   # fail the check on errors; warnings are shown but don't fail it
 ```
@@ -206,7 +206,7 @@ GitHub code scanning keeps findings open until they're fixed and shows them acro
       security-events: write
     steps:
       - uses: actions/checkout@v4
-      - uses: toluwade/duoready@v0.1.0
+      - uses: toluwade/duoready@v0.1.1
         with:
           sarif: duoready.sarif
       - uses: github/codeql-action/upload-sarif@v3
@@ -232,14 +232,14 @@ GitHub code scanning keeps findings open until they're fixed and shows them acro
 | `summary` | `true` | Write a Markdown summary to the job summary page |
 | `upload-report` | `false` | Upload a JSON report as a workflow artifact |
 
-For a release tag such as `@v0.1.0`, the action downloads that version's prebuilt binary and
+For a release tag such as `@v0.1.1`, the action downloads that version's prebuilt binary and
 verifies its checksum, so it starts in seconds. For any other ref, it builds DuoReady once
 (a few minutes) and caches the result for later runs. It needs only `contents: read`, and it
 never builds or runs the code it scans.
 
 </details>
 
-## 📦 Using it on an existing app
+## Using it on an existing app
 
 Got 80 findings on day one? You don't have to fix them all before turning on CI. Record them in
 a **baseline**:
@@ -268,7 +268,7 @@ then run `duoready baseline` again to shrink the file.
 
 </details>
 
-## ⚙️ Configuration
+## Configuration
 
 Configuration is optional. To customize DuoReady, create `.duoready.json` in your project:
 
@@ -340,11 +340,11 @@ scanner broke."
 
 </details>
 
-## 🛠️ How it works
+## How it works
 
 DuoReady parses each Swift file with Apple's [SwiftSyntax](https://github.com/swiftlang/swift-syntax),
 the same parser the Swift compiler uses, and reads Info.plist files and Xcode build settings for
-project-level rules. It reads real code structure, not text patterns, so it
+project-level rules. Because it works on the parsed code instead of searching text, it
 can tell `UIScreen.main` in code from the same words in a comment or string. Each rule is a small,
 independently tested check, which makes adding a new one easy.
 
@@ -354,7 +354,7 @@ independently tested check, which makes adding a new one easy.
 - **An auto-fixer.** The right fix depends on context, so it explains the fix instead of
   rewriting your code.
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome. The most valuable one is a **false-positive report**: if DuoReady
 flags code that's actually fine, [open an issue](../../issues/new/choose) with a small snippet.
