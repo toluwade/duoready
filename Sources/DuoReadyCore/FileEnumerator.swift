@@ -17,9 +17,28 @@ public struct FileEnumerator: Sendable {
     }
 
     private let excludes: [GlobPattern]
+    private let includeTests: Bool
 
-    public init(excludePatterns: [String]) throws {
+    public init(excludePatterns: [String], includeTests: Bool = false) throws {
         excludes = try excludePatterns.map(GlobPattern.init)
+        self.includeTests = includeTests
+    }
+
+    /// Test targets and helpers, e.g. `Tests/`, `AppTests/`, `AppUITests/`, `TestHelpers/`.
+    /// Tests often pin sizes on purpose (snapshot tests, fixtures), so their
+    /// findings are mostly noise.
+    /// Suffixes are matched case-sensitively so `Contests/` stays app code.
+    static func isTestDirectory(_ name: String) -> Bool {
+        ["tests", "test", "specs", "testhelpers", "testsupport", "testutilities", "fixtures", "mocks"]
+            .contains(name.lowercased())
+            || name.hasSuffix("Tests") || name.hasSuffix("Specs")
+    }
+
+    /// Test files outside a test directory, e.g. `ProfileViewTests.swift`.
+    /// `Contest.swift` and `Manifest.swift` are not matched.
+    static func isTestFile(_ name: String) -> Bool {
+        let stem = (name as NSString).deletingPathExtension
+        return ["Tests", "Test", "Spec", "Specs"].contains { stem.hasSuffix($0) }
     }
 
     public func swiftFiles(in root: URL) throws -> (files: [Candidate], skipped: [ScanIssue]) {
@@ -58,6 +77,7 @@ public struct FileEnumerator: Sendable {
             }
             if values?.isDirectory == true {
                 if Self.defaultExcludedDirectories.contains(url.lastPathComponent)
+                    || (!includeTests && Self.isTestDirectory(url.lastPathComponent))
                     || isExcluded(relativePath + "/")
                 {
                     enumerator.skipDescendants()
@@ -66,6 +86,7 @@ public struct FileEnumerator: Sendable {
             }
             guard values?.isRegularFile == true, url.pathExtension == "swift" else { continue }
             guard !isExcluded(relativePath) else { continue }
+            if !includeTests, Self.isTestFile(url.lastPathComponent) { continue }
             if let size = values?.fileSize, size > Self.maximumFileSize {
                 skipped.append(ScanIssue(file: relativePath, message: "Skipped: file is larger than \(Self.maximumFileSize / 1024 / 1024) MB."))
                 continue

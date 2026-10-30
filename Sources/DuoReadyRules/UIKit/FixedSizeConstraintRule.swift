@@ -24,8 +24,9 @@ public struct FixedSizeConstraintRule: SwiftRule {
         limitations: """
             Reports widthAnchor/heightAnchor.constraint(equalToConstant:) and \
             NSLayoutConstraint(item:attribute:relatedBy:toItem:nil…) with a literal constant. \
-            Constants stored in variables, constraints in Interface Builder files and priority \
-            changes made after creation are not detected.
+            A priority lowered in the same expression, or on a variable holding the constraint \
+            later in the same block, is recognized. Constants stored in variables and constraints \
+            in Interface Builder files are not detected.
             """
     )
 
@@ -50,11 +51,31 @@ public struct FixedSizeConstraintRule: SwiftRule {
             }
     }
 
-    /// `….constraint(equalToConstant: 400).withPriority(.defaultHigh)` style
-    /// chains, or setting `.priority` on the result in the same expression.
+    /// Recognizes a constraint whose priority is changed, either in the same
+    /// expression (`.constraint(equalToConstant: 400).withPriority(.defaultHigh)`)
+    /// or later in the same block:
+    ///
+    ///     let width = view.widthAnchor.constraint(equalToConstant: 99999)
+    ///     width.priority = .defaultLow
     static func priorityIsLowered(_ call: FunctionCallExprSyntax) -> Bool {
-        guard let member = call.parent?.as(MemberAccessExprSyntax.self) else { return false }
-        return member.declName.baseName.text.lowercased().contains("priority")
+        if let member = call.parent?.as(MemberAccessExprSyntax.self),
+           member.declName.baseName.text.lowercased().contains("priority")
+        {
+            return true
+        }
+        guard let binding = call.parent?.as(InitializerClauseSyntax.self)?.parent?.as(PatternBindingSyntax.self),
+              let name = binding.pattern.as(IdentifierPatternSyntax.self)?.identifier.text,
+              let statement = binding.firstAncestor(CodeBlockItemSyntax.self),
+              let block = statement.parent?.as(CodeBlockItemListSyntax.self)
+        else { return false }
+
+        return block.drop(while: { $0.id != statement.id }).dropFirst().contains { later in
+            later.item.tokens(viewMode: .sourceAccurate).contains { token in
+                token.text == "priority"
+                    && token.previousToken(viewMode: .sourceAccurate)?.text == "."
+                    && token.previousToken(viewMode: .sourceAccurate)?.previousToken(viewMode: .sourceAccurate)?.text == name
+            }
+        }
     }
 
     private struct Match {

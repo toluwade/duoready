@@ -40,8 +40,21 @@ struct FixedScreenDimensionRuleTests {
             let isLarge = itemCount > 812
             if bounds.width == 100 { hide() }
             switch statusCode { case 320: break; default: break }
+            #expect(thumbnail?.width == 320)
+            if image.size.height == 812 { useLargeAsset() }
+            switch photo.width { case 375: break; default: break }
             """)
         #expect(findings.isEmpty)
+    }
+
+    @Test("Flags device detection through a geometry proxy")
+    func geometryProxy() {
+        let findings = check("""
+            GeometryReader { geometry in
+                if geometry.size.width == 375 { CompactView() }
+            }
+            """)
+        #expect(findings.map(\.line) == [2])
     }
 
     @Test("Handles reversed operands, floats, compound conditions and #if")

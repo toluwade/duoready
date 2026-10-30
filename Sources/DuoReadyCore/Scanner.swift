@@ -69,7 +69,7 @@ public struct Scanner: Sendable {
     public func scan(root: URL) throws -> ScanResult {
         let enumerator: FileEnumerator
         do {
-            enumerator = try FileEnumerator(excludePatterns: configuration.exclude)
+            enumerator = try FileEnumerator(excludePatterns: configuration.exclude, includeTests: configuration.includeTests)
         } catch {
             throw ScanError.invalidExcludePattern(configuration.exclude.joined(separator: ", "))
         }

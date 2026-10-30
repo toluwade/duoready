@@ -11,6 +11,9 @@ struct ProjectOptions: ParsableArguments {
     @Option(name: .shortAndLong, help: "Configuration file. Defaults to .duoready.json in the scanned directory, if present.")
     var config: String?
 
+    @Flag(help: "Also scan test targets and test files, which are skipped by default.")
+    var includeTests = false
+
     var root: URL {
         URL(fileURLWithPath: path).standardizedFileURL
     }
@@ -55,6 +58,8 @@ struct ProjectOptions: ParsableArguments {
     }
 
     func scan(with configuration: ScanConfiguration) throws -> ScanResult {
+        var configuration = configuration
+        if includeTests { configuration.includeTests = true }
         do {
             return try Scanner(registry: .builtIn, configuration: configuration).scan(root: root)
         } catch let error as ScanError {

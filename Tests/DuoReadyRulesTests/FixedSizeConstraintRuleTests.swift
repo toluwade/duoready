@@ -40,6 +40,22 @@ struct FixedSizeConstraintRuleTests {
         #expect(findings.isEmpty)
     }
 
+    @Test("Recognizes a priority lowered later in the same block")
+    func priorityLoweredLater() {
+        let findings = check("""
+            func setUp() {
+                let width = view.widthAnchor.constraint(equalToConstant: 99999)
+                width.priority = .defaultLow
+                width.isActive = true
+
+                let height = card.heightAnchor.constraint(equalToConstant: 900)
+                unrelated.priority = .defaultLow
+                height.isActive = true
+            }
+            """)
+        #expect(findings.map(\.line) == [6])
+    }
+
     @Test("Handles optional chaining, floats and #if blocks")
     func edgeCases() {
         let findings = check("""

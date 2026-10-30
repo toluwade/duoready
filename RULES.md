@@ -1,5 +1,9 @@
 # DuoReady rules
 
+DuoReady skips test code by default (test targets such as `AppTests/`, folders like
+`TestHelpers/`, and files such as `FeedViewTests.swift`), because tests often fix sizes on
+purpose. Pass `--include-tests` or set `"includeTests": true` to scan them too.
+
 Every rule has a stable ID. IDs are never reused or renumbered, so they are safe to reference in
 configuration, suppressions and issue trackers. Run `duoready rules <ID>` for the same details in
 your terminal.
@@ -127,8 +131,10 @@ narrower than an iPhone, and a phone-sized device can show a wide window. Sizes 
 ### Flagged
 
 `userInterfaceIdiom` compared with `.pad` or `.phone` in an `if`, `guard`, `switch` or ternary,
-when the branches set geometry (sizes, spacing, padding, insets, margins, columns, frames, axes
-or constraint constants), or when a ternary chooses between numbers:
+when the branches set geometry, or when a ternary chooses between numbers. A branch sets
+geometry when it uses a name such as `size`, `itemSize` or `contentSize`, or a name ending in
+width, height, padding, spacing, inset, margin, frame, constant, axis or columns (for example
+`cellWidth` or `leadingPadding`). DuoReady reports one finding per condition.
 
 ```swift
 let padding: CGFloat = UIDevice.current.userInterfaceIdiom == .pad ? 40 : 16
@@ -140,7 +146,10 @@ if UIDevice.current.userInterfaceIdiom == .pad {
 
 ### Not flagged
 
+- Conditions that also check a size class, such as
+  `idiom == .pad && horizontalSizeClass == .regular`. They already adapt to the window.
 - Feature or presentation checks, such as `modalPresentationStyle = .popover` on iPad.
+- Names in the condition itself, such as `prefs.showSecondaryColumn`.
 - Checks for other idioms (`.mac`, `.tv`, `.carPlay`, `.vision`), which are platform decisions.
 
 ### Fix
@@ -170,9 +179,9 @@ these checks pick the wrong layout, or none at all.
 
 ### Flagged
 
-- Exact comparisons (`==`, `!=`) of a width or height with a known iPhone or iPad screen dimension
-  in points, such as 375, 667 or 812.
-- `switch` cases that match a width or height against one of those dimensions.
+- Exact comparisons (`==`, `!=`) of a view's, window's, screen's or `GeometryReader` proxy's width
+  or height with a known iPhone or iPad screen dimension in points, such as 375, 667 or 812.
+- `switch` cases that match such a width or height against one of those dimensions.
 - Ordered comparisons (`<`, `>`, `<=`, `>=`) with one of those dimensions, when the measured value
   comes from the screen (its expression mentions "screen").
 
@@ -186,6 +195,7 @@ let hasNotch = UIScreen.main.bounds.height >= 812
 - Breakpoints on the view's own size that aren't device dimensions, such as
   `view.bounds.width > 600`.
 - Numbers that aren't compared with a width or height, such as `retryCount == 375`.
+- Sizes of content rather than UI, such as `thumbnail.width == 320` or `image.size.height == 812`.
 
 ### Fix
 
@@ -222,7 +232,13 @@ NSLayoutConstraint(item: card, attribute: .width, relatedBy: .equal,
 
 - Constraints relative to another view, or capped with `lessThanOrEqualToConstant`.
 - Small fixed sizes (widths under 320, heights under 568).
-- A constraint whose priority is lowered in the same expression, e.g. `.withPriority(.defaultHigh)`.
+- A constraint whose priority is lowered, either in the same expression
+  (`.withPriority(.defaultHigh)`) or later in the same block:
+
+  ```swift
+  let width = view.widthAnchor.constraint(equalToConstant: 99999)
+  width.priority = .defaultLow
+  ```
 
 ### Fix
 
@@ -233,8 +249,8 @@ card.widthAnchor.constraint(lessThanOrEqualToConstant: 600)
 
 ### Limitations
 
-Constants stored in variables, constraints defined in storyboards or XIBs, and priorities changed
-after the constraint is created are not detected.
+Constants stored in variables and constraints defined in storyboards or XIBs are not detected. A
+priority changed in a different method or block is not recognized.
 
 ---
 
@@ -253,6 +269,8 @@ so the view clips or overflows in a smaller window.
 ```swift
 Image("hero").frame(width: 390, height: 844)
 ```
+
+DuoReady reports one finding per `.frame` call, naming whichever dimensions are too large.
 
 ### Not flagged
 

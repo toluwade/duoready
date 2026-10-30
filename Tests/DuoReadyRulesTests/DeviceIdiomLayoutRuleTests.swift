@@ -45,6 +45,40 @@ struct DeviceIdiomLayoutRuleTests {
         #expect(findings.isEmpty)
     }
 
+    @Test("Ignores conditions that already check the size class")
+    func sizeClassAlreadyChecked() {
+        let findings = check("""
+            if UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular { toolbarWidth = 300 }
+            if UIDevice.current.userInterfaceIdiom == .pad, traitCollection.horizontalSizeClass == .compact {
+                leadingPadding = 80
+            }
+            """)
+        #expect(findings.isEmpty)
+    }
+
+    @Test("Matches whole layout names in branch bodies, not fragments or conditions")
+    func wholeNames() {
+        let findings = check("""
+            if UIDevice.current.userInterfaceIdiom == .pad, prefs.showSecondaryColumn { openSidebar() }
+            if UIDevice.current.userInterfaceIdiom == .pad { Toggle("Column", isOn: $prefs.showSecondaryColumn) }
+            if UIDevice.current.userInterfaceIdiom == .pad { activity.popoverPresentationController?.sourceRect = cgRect }
+            if UIDevice.current.userInterfaceIdiom == .phone { bannerBottomConstraint.constant = 45 }
+            if UIDevice.current.userInterfaceIdiom == .pad { cellWidth = 200 }
+            """)
+        #expect(findings.map(\.line) == [4, 5])
+    }
+
+    @Test("Reports one finding per condition")
+    func oneFindingPerCondition() {
+        let findings = check("""
+            if UIDevice.current.userInterfaceIdiom == .pad || UIDevice.current.userInterfaceIdiom == .mac {
+                sidebarWidth = 320
+            }
+            """)
+        #expect(findings.map(\.line) == [1])
+        #expect(findings.first?.column == 4)
+    }
+
     @Test("Handles optional chaining, closures and non-iOS #if blocks")
     func edgeCases() {
         let findings = check("""

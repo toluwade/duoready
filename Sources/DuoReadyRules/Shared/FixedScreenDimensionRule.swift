@@ -21,14 +21,25 @@ public struct FixedScreenDimensionRule: SwiftRule {
             view.bounds.width > 600 or ViewThatFits), not on a device's screen size.
             """,
         limitations: """
-            Reports exact comparisons (==, !=) and switch cases that match a width or height \
-            against a known iPhone or iPad screen dimension, and ordered comparisons (<, >, <=, >=) \
-            when the measured value comes from the screen. Comparisons against breakpoints that \
-            aren't device dimensions are not reported. Arithmetic on either side is not evaluated.
+            Reports exact comparisons (==, !=) and switch cases that match the width or height of \
+            a view, window, screen or geometry proxy against a known iPhone or iPad screen \
+            dimension, and ordered comparisons (<, >, <=, >=) when the measured value comes from \
+            the screen. Sizes of other things, such as images, and breakpoints that aren't device \
+            dimensions are not reported. Arithmetic on either side is not evaluated.
             """
     )
 
     static let equalityOperators: Set<String> = ["==", "!="]
+
+    /// Whether `expression` measures UI space (`view.bounds.height`, `screenWidth`,
+    /// `geometry.size.width`) rather than content such as `thumbnail.width`.
+    static func measuresUISpace(_ expression: some SyntaxProtocol) -> Bool {
+        expression.identifierNames.contains { name in
+            let lowered = name.lowercased()
+            return ["screen", "window", "bounds", "frame", "geometry"].contains { lowered.contains($0) }
+                || ["view", "proxy", "safearealayoutguide"].contains(lowered)
+        }
+    }
     static let orderingOperators: Set<String> = ["<", ">", "<=", ">="]
 
     public func check(_ file: SwiftSourceFile) -> [Finding] {
@@ -61,7 +72,8 @@ public struct FixedScreenDimensionRule: SwiftRule {
                 for (measured, literal) in [(lhs, rhs), (rhs, lhs)] {
                     guard let value = literal.numericLiteralValue,
                           DeviceDimensions.points.contains(value),
-                          measured.namesDimension
+                          measured.namesDimension,
+                          FixedScreenDimensionRule.measuresUISpace(measured)
                     else { continue }
                     if !isEquality, !measured.trimmedDescription.lowercased().contains("screen") { continue }
                     matches.append(Match(
@@ -76,7 +88,9 @@ public struct FixedScreenDimensionRule: SwiftRule {
         }
 
         override func visit(_ node: SwitchExprSyntax) -> SyntaxVisitorContinueKind {
-            guard node.subject.namesDimension else { return .visitChildren }
+            guard node.subject.namesDimension, FixedScreenDimensionRule.measuresUISpace(node.subject) else {
+                return .visitChildren
+            }
             for case let .switchCase(switchCase) in node.cases {
                 guard let label = switchCase.label.as(SwitchCaseLabelSyntax.self) else { continue }
                 for item in label.caseItems {

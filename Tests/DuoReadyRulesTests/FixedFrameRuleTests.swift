@@ -17,9 +17,12 @@ struct FixedFrameRuleTests {
                 }
             }
             """)
-        #expect(findings.map(\.line) == [4, 4, 5])
-        #expect(findings.map(\.column) == [20, 32, 26])
-        #expect(findings.first?.message == "Fixed frame width of 390 points won't adapt to smaller windows.")
+        #expect(findings.map(\.line) == [4, 5])
+        #expect(findings.map(\.column) == [20, 26])
+        #expect(findings.map(\.message) == [
+            "Fixed frame of 390 × 844 points won't adapt to smaller windows.",
+            "Fixed frame width of 320 points won't adapt to smaller windows.",
+        ])
     }
 
     @Test("Does not flag flexible or capped frames")
@@ -47,6 +50,15 @@ struct FixedFrameRuleTests {
             }
             """)
         #expect(findings.isEmpty)
+    }
+
+    @Test("Reports only the oversized dimension")
+    func singleDimension() {
+        let findings = check("""
+            Card().frame(width: 200, height: 700)
+            """)
+        #expect(findings.map(\.message) == ["Fixed frame height of 700 points won't adapt to smaller windows."])
+        #expect(findings.first?.column == 26)
     }
 
     @Test("Handles multi-line modifiers, floats and non-iOS #if blocks")

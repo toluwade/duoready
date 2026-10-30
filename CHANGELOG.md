@@ -24,5 +24,12 @@ All notable changes to this project are documented here. The format follows
 - DR005: Constraints that pin content to screen-sized constants.
 - DR006: SwiftUI frames with screen-sized fixed dimensions.
 - Composite GitHub Action.
+- Test code is skipped by default. `--include-tests` and the `includeTests` configuration key
+  scan it too.
+- Fewer false positives, tuned against three open-source apps: DR003 looks for layout names
+  in branch bodies only, skips conditions that also check a size class and reports once per
+  condition. DR004 only compares the sizes of views, windows, screens and geometry proxies.
+  DR005 recognizes a priority lowered later in the same block. DR006 reports once per
+  `.frame` call.
 - Installation with Mint, and a Homebrew formula template and release script for the
   `toluwade/tap` tap.

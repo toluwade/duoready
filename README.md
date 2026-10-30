@@ -145,8 +145,9 @@ found. Add `--explain` to see why each pattern is risky.
 | [**DR006**](RULES.md#dr006) | SwiftUI `.frame(width:)` the size of a whole screen | `maxWidth`, `containerRelativeFrame` |
 
 DuoReady aims for findings you can trust over catching everything. Each rule skips the legitimate
-lookalikes: camera code that really needs orientation, fixed frames in previews, small icon sizes
-and macOS-only code. See [RULES.md](RULES.md) for the details and known limitations.
+lookalikes: camera code that really needs orientation, conditions that already check size
+classes, fixed frames in previews, small icon sizes, test code and macOS-only code. See
+[RULES.md](RULES.md) for the details and known limitations.
 
 ## 🤖 Add it to your pull requests
 
@@ -252,6 +253,7 @@ let scale = UIScreen.main.scale // duoready:ignore DR001
 | `rules` | Enable or disable a rule, or change its severity. Unknown rule IDs are an error, so typos don't fail silently. |
 | `failOn` | The lowest severity that fails a scan. `--severity` overrides it. |
 | `baseline` | Path to the baseline file, relative to this file. Default: `.duoready-baseline.json`. |
+| `includeTests` | Also scan test code. Default: `false`, because tests often fix sizes on purpose. |
 
 A `// duoready:ignore` comment on its own line applies to the next line. With no rule IDs, it
 silences every rule.
@@ -271,6 +273,7 @@ silences every rule.
 | `duoready scan --output report.json` | Write the report to a file |
 | `duoready scan --explain` | Include the reason behind each finding |
 | `duoready scan --no-baseline` | Show every finding, ignoring the baseline |
+| `duoready scan --include-tests` | Also scan test targets and test files |
 | `duoready baseline [path]` | Record current findings so scans report only new ones |
 | `duoready rules [ID]` | List the rules, or explain one |
 | `duoready config init` | Create a starter `.duoready.json` |

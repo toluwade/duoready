@@ -34,14 +34,24 @@ public struct FixedFrameRule: SwiftRule {
         return visitor.matches
             .filter { !$0.node.isInNonIOSPlatformBlock && !$0.node.isInSwiftUIPreview }
             .map { match in
-                finding(at: match.node, in: file, message: "Fixed frame \(match.label) of \(formatPoints(match.value)) points won't adapt to smaller windows.")
+                finding(at: match.node, in: file, message: "Fixed frame \(match.description) won't adapt to smaller windows.")
             }
     }
 
+    /// One per `.frame(…)` call, located at its first oversized argument.
     private struct Match {
         let node: LabeledExprSyntax
-        let label: String
-        let value: Double
+        let width: Double?
+        let height: Double?
+
+        var description: String {
+            switch (width, height) {
+            case let (width?, height?): "of \(formatPoints(width)) × \(formatPoints(height)) points"
+            case let (width?, nil): "width of \(formatPoints(width)) points"
+            case let (nil, height?): "height of \(formatPoints(height)) points"
+            case (nil, nil): ""
+            }
+        }
     }
 
     private final class Visitor: SyntaxVisitor {
@@ -52,19 +62,24 @@ public struct FixedFrameRule: SwiftRule {
                   callee.declName.baseName.text == "frame"
             else { return .visitChildren }
 
+            var first: LabeledExprSyntax?
+            var width: Double?
+            var height: Double?
             for argument in node.arguments {
                 guard let label = argument.label?.text,
                       let value = argument.expression.numericLiteralValue
                 else { continue }
-                let threshold: Double
-                switch label {
-                case "width": threshold = DeviceDimensions.narrowestWidth
-                case "height": threshold = DeviceDimensions.shortestHeight
-                default: continue
+                if label == "width", value >= DeviceDimensions.narrowestWidth {
+                    width = value
+                } else if label == "height", value >= DeviceDimensions.shortestHeight {
+                    height = value
+                } else {
+                    continue
                 }
-                if value >= threshold {
-                    matches.append(Match(node: argument, label: label, value: value))
-                }
+                first = first ?? argument
+            }
+            if let first {
+                matches.append(Match(node: first, width: width, height: height))
             }
             return .visitChildren
         }

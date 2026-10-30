@@ -110,6 +110,29 @@ struct ScannerTests {
         #expect(result.findings.map(\.file) == ["a/A.swift", "b/B.swift"])
     }
 
+    @Test("Skips test targets and test files unless asked to include them")
+    func skipsTests() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("duoready-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = [
+            "App/Feed.swift", "App/Contests/Contest.swift", "App/Manifest.swift",
+            "AppTests/FeedTests.swift", "Tests/Helpers.swift", "App/FeedViewTests.swift",
+            "Packages/KDS/Tests/KDSTests/ColorsTests.swift", "App/TestHelpers/Frames.swift",
+            "AppUITests/Launch.swift", "App/LoginSpec.swift",
+        ]
+        for path in paths {
+            let url = root.appendingPathComponent(path)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data("fixme()".utf8).write(to: url)
+        }
+
+        let skipped = try Scanner(registry: registry).scan(root: root)
+        #expect(skipped.findings.map(\.file) == ["App/Contests/Contest.swift", "App/Feed.swift", "App/Manifest.swift"])
+
+        let included = try Scanner(registry: registry, configuration: .init(includeTests: true)).scan(root: root)
+        #expect(included.filesScanned == paths.count)
+    }
+
     @Test("Reports a missing path as a scan error")
     func missingPath() {
         #expect(throws: ScanError.self) {

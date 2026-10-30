@@ -161,3 +161,54 @@ enum DeviceDimensions {
 func formatPoints(_ value: Double) -> String {
     value.rounded() == value ? String(Int(value)) : String(value)
 }
+
+/// The condition and branch bodies of a decision returned by
+/// `enclosingDecision()`, so rules can inspect them separately.
+struct DecisionParts {
+    var condition: [Syntax] = []
+    var branches: [Syntax] = []
+
+    init(_ decision: Syntax) {
+        if let ifExpr = decision.as(IfExprSyntax.self) {
+            condition = [Syntax(ifExpr.conditions)]
+            branches = [Syntax(ifExpr.body)] + (ifExpr.elseBody.map { [Syntax($0)] } ?? [])
+        } else if let guardStmt = decision.as(GuardStmtSyntax.self) {
+            condition = [Syntax(guardStmt.conditions)]
+            branches = [Syntax(guardStmt.body)]
+        } else if let whileStmt = decision.as(WhileStmtSyntax.self) {
+            condition = [Syntax(whileStmt.conditions)]
+            branches = [Syntax(whileStmt.body)]
+        } else if let switchExpr = decision.as(SwitchExprSyntax.self) {
+            condition = [Syntax(switchExpr.subject)]
+            branches = switchExpr.cases.compactMap { $0.as(SwitchCaseSyntax.self).map { Syntax($0.statements) } }
+        } else if let sequence = decision.as(SequenceExprSyntax.self) {
+            let elements = Array(sequence.elements)
+            if let index = elements.firstIndex(where: { $0.is(UnresolvedTernaryExprSyntax.self) }),
+               let ternary = elements[index].as(UnresolvedTernaryExprSyntax.self)
+            {
+                condition = elements[..<index].map(Syntax.init)
+                branches = [Syntax(ternary.thenExpression)] + elements[(index + 1)...].map(Syntax.init)
+            }
+        }
+    }
+
+    var conditionNames: Set<String> {
+        condition.reduce(into: []) { $0.formUnion($1.identifierNames) }
+    }
+
+    var branchNames: Set<String> {
+        branches.reduce(into: []) { $0.formUnion($1.identifierNames) }
+    }
+}
+
+extension SyntaxProtocol {
+    /// The nearest ancestor of the given type.
+    func firstAncestor<T: SyntaxProtocol>(_ type: T.Type) -> T? {
+        var current = parent
+        while let node = current {
+            if let match = node.as(type) { return match }
+            current = node.parent
+        }
+        return nil
+    }
+}

@@ -23,19 +23,24 @@ public struct ScanConfiguration: Codable, Sendable, Equatable {
     public var failOn: Severity
     /// Baseline file, relative to the configuration file's directory.
     public var baseline: String?
+    /// Scan test targets and test files too. Off by default, because tests
+    /// often fix sizes deliberately.
+    public var includeTests: Bool
 
     public init(
         version: Int = ScanConfiguration.currentVersion,
         exclude: [String] = [],
         rules: [String: RuleOverride] = [:],
         failOn: Severity = .error,
-        baseline: String? = nil
+        baseline: String? = nil,
+        includeTests: Bool = false
     ) {
         self.version = version
         self.exclude = exclude
         self.rules = rules
         self.failOn = failOn
         self.baseline = baseline
+        self.includeTests = includeTests
     }
 
     public init(from decoder: any Decoder) throws {
@@ -45,6 +50,7 @@ public struct ScanConfiguration: Codable, Sendable, Equatable {
         rules = try container.decodeIfPresent([String: RuleOverride].self, forKey: .rules) ?? [:]
         failOn = try container.decodeIfPresent(Severity.self, forKey: .failOn) ?? .error
         baseline = try container.decodeIfPresent(String.self, forKey: .baseline)
+        includeTests = try container.decodeIfPresent(Bool.self, forKey: .includeTests) ?? false
     }
 
     public static func load(from url: URL) throws -> ScanConfiguration {
