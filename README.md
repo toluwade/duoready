@@ -85,7 +85,7 @@ You need a Mac with Swift 6.0 or later, which comes with Xcode.
 
 **1. Install**
 
-With [Homebrew](https://brew.sh) (available from v0.1.0):
+With [Homebrew](https://brew.sh):
 
 ```sh
 brew install toluwade/tap/duoready
