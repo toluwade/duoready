@@ -1,8 +1,6 @@
 <div align="center">
 
-# DuoReady
-
-**Get your iOS app ready for iPhone Duo, and keep it ready on every pull request.**
+<img src="docs/images/banner.png" alt="DuoReady: Get your iOS app ready for iPhone Duo, and keep it ready." width="100%">
 
 DuoReady scans your SwiftUI and UIKit code for layouts that break when an app's window
 changes size, on iPhone Duo, in Split View and on iPad, and tells you exactly how to fix them.
@@ -371,3 +369,11 @@ swift build && swift test
 ## License
 
 [MIT](LICENSE). Free for personal and commercial use.
+
+<br>
+
+<div align="center">
+  <img src="docs/images/logo.png" alt="DuoReady logo" width="72">
+  <br>
+  <sub>Built for developers getting their apps ready for iPhone Duo.</sub>
+</div>
