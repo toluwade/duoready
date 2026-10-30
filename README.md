@@ -76,11 +76,16 @@ You need a Mac with Swift 6.0 or later, which comes with Xcode.
 
 **1. Install**
 
+With [Homebrew](https://brew.sh) (available from v0.1.0):
+
 ```sh
-git clone https://github.com/YOUR_USERNAME/duoready.git
-cd duoready
-swift build -c release
-sudo cp .build/release/duoready /usr/local/bin/
+brew install toluwade/tap/duoready
+```
+
+Or with [Mint](https://github.com/yonaskolb/Mint):
+
+```sh
+mint install toluwade/duoready
 ```
 
 <details>
@@ -88,8 +93,25 @@ sudo cp .build/release/duoready /usr/local/bin/
 
 <br>
 
-- **[Mint](https://github.com/yonaskolb/Mint):** `mint install YOUR_USERNAME/duoready`
-- **Homebrew:** coming with the first release.
+**Pin a version for your whole team with Mint.** Add this line to a `Mintfile` in your app's
+repository:
+
+```
+toluwade/duoready@v0.1.0
+```
+
+Everyone then runs the same version with `mint run duoready scan .`
+
+**Build from source:**
+
+```sh
+git clone https://github.com/toluwade/duoready.git
+cd duoready
+swift build -c release
+sudo cp .build/release/duoready /usr/local/bin/
+```
+
+The first build takes a few minutes, because it compiles Apple's Swift parser.
 
 </details>
 
@@ -141,7 +163,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: YOUR_USERNAME/duoready@v0.1.0
+      - uses: toluwade/duoready@v0.1.0
         with:
           severity: error   # fail the check on errors; warnings are shown but don't fail it
 ```

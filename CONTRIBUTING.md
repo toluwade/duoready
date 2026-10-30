@@ -42,3 +42,7 @@ real projects.
 
 Follow the surrounding code. Keep rules small and declarative, and put shared syntax helpers in
 `Sources/DuoReadyRules/Shared/`.
+
+## Releases
+
+Maintainers: see [RELEASING.md](RELEASING.md).

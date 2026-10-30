@@ -1,0 +1,30 @@
+# Homebrew formula template for DuoReady.
+# Rendered into the toluwade/homebrew-tap repository by
+# scripts/update-homebrew-formula.sh. See RELEASING.md.
+class Duoready < Formula
+  desc "Find adaptive-layout and resizability problems in SwiftUI and UIKit code"
+  homepage "https://github.com/toluwade/duoready"
+  url "https://github.com/toluwade/duoready/archive/refs/tags/v{{VERSION}}.tar.gz"
+  sha256 "{{SHA256}}"
+  license "MIT"
+  head "https://github.com/toluwade/duoready.git", branch: "main"
+
+  depends_on xcode: ["16.0", :build]
+  depends_on :macos
+
+  def install
+    system "swift", "build", "--disable-sandbox", "--configuration", "release", "--product", "duoready"
+    bin.install ".build/release/duoready"
+  end
+
+  test do
+    assert_equal version.to_s, shell_output("#{bin}/duoready version").strip
+
+    (testpath/"View.swift").write <<~SWIFT
+      import UIKit
+      let width = UIScreen.main.bounds.width
+    SWIFT
+    # Exit status 1 means the scan ran and found something at the threshold.
+    assert_match "DR001", shell_output("#{bin}/duoready scan #{testpath} --severity warning", 1)
+  end
+end

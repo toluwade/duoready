@@ -1,5 +1,5 @@
 # Copy to .github/workflows/duoready.yml in your app's repository.
-# Replace YOUR_ORG and pin the action to a full commit SHA for production use.
+# Pin the action to a full commit SHA for production use.
 name: DuoReady
 
 on:
@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: YOUR_ORG/duoready@v0.1.0
+      - uses: toluwade/duoready@v0.1.0
         with:
           path: .
           severity: error

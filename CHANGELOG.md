@@ -24,3 +24,5 @@ All notable changes to this project are documented here. The format follows
 - DR005: Constraints that pin content to screen-sized constants.
 - DR006: SwiftUI frames with screen-sized fixed dimensions.
 - Composite GitHub Action.
+- Installation with Mint, and a Homebrew formula template and release script for the
+  `toluwade/tap` tap.
