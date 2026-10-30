@@ -16,8 +16,4 @@ public struct RuleRegistry: Sendable {
     public var projectRules: [any ProjectRule] { rules.compactMap { $0 as? any ProjectRule } }
 
     public var ruleIDs: Set<String> { Set(rules.map(\.metadata.id)) }
-
-    public func rule(withID id: String) -> (any Rule)? {
-        rules.first { $0.metadata.id == id }
-    }
 }

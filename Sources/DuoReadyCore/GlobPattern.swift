@@ -7,11 +7,9 @@ import Foundation
 /// - `?` matches one character within a component.
 /// - A pattern with no `/` matches at any depth, like `.gitignore`.
 public struct GlobPattern: Sendable {
-    public let pattern: String
     private let regex: NSRegularExpression
 
     public init(_ pattern: String) throws {
-        self.pattern = pattern
         var body = pattern
         if body.hasPrefix("./") { body.removeFirst(2) }
         if !body.contains("/") { body = "**/" + body }

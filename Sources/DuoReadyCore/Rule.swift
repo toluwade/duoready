@@ -44,8 +44,6 @@ public struct RuleMetadata: Codable, Sendable, Hashable {
         self.suggestion = suggestion
         self.limitations = limitations
     }
-
-    public var documentationPath: String { "RULES.md#\(id.lowercased())" }
 }
 
 /// Anything with rule metadata. Concrete rules adopt ``SwiftRule`` or
