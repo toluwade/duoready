@@ -182,7 +182,9 @@ jobs:
 | `format` | `github` | `github`, `text` or `json` |
 | `upload-report` | `false` | Upload a JSON report as a workflow artifact |
 
-The action builds DuoReady from the version you reference and needs only `contents: read`. It
+For a release tag such as `@v0.1.0`, the action downloads that version's prebuilt binary and
+verifies its checksum, so it starts in seconds. For any other ref, it builds DuoReady once
+(a few minutes) and caches the result for later runs. It needs only `contents: read`, and it
 never builds or runs the code it scans.
 
 </details>

@@ -45,13 +45,57 @@ runs:
         case "$INPUT_SEVERITY" in ""|info|warning|error) ;; *) echo "::error::severity must be info, warning or error"; exit 2 ;; esac
         case "$INPUT_UPLOAD" in true|false) ;; *) echo "::error::upload-report must be true or false"; exit 2 ;; esac
 
-    # Builds the CLI from the same commit as this action, so the scanner
-    # version always matches the action ref you pinned.
-    - name: Build DuoReady
+    # A version tag downloads the prebuilt binary from its GitHub release.
+    # Any other ref builds from source once and reuses the cached binary.
+    # Either way the scanner matches the action ref you pinned.
+    - name: Locate DuoReady
+      id: locate
       shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        ACTION_REF: ${{ github.action_ref }}
+        ACTION_REPO: ${{ github.action_repository }}
+        BIN_DIR: ${{ runner.temp }}/duoready-bin
+        OUTPUT: ${{ runner.temp }}/duoready-locate.out
+      run: |
+        "$ACTION_PATH/scripts/action-locate.sh"
+        cat "$OUTPUT" >> "$GITHUB_OUTPUT"
+
+    - name: Restore cached DuoReady
+      id: cache
+      if: steps.locate.outputs.source == 'build'
+      # Pin to a full commit SHA before production use.
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ runner.temp }}/duoready-bin
+        key: ${{ steps.locate.outputs.cache-key }}
+
+    - name: Build DuoReady
+      if: steps.locate.outputs.source == 'build' && steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        BIN_DIR: ${{ runner.temp }}/duoready-bin
       run: |
         swift build -c release --product duoready --package-path "$GITHUB_ACTION_PATH"
-        echo "DUOREADY_BIN=$(swift build -c release --show-bin-path --package-path "$GITHUB_ACTION_PATH")/duoready" >> "$GITHUB_ENV"
+        cp "$(swift build -c release --show-bin-path --package-path "$GITHUB_ACTION_PATH")/duoready" "$BIN_DIR/"
+
+    # Saved before scanning: a scan with findings fails the job, and the
+    # cache should still be kept for the next run.
+    - name: Cache DuoReady
+      if: steps.locate.outputs.source == 'build' && steps.cache.outputs.cache-hit != 'true'
+      # Pin to a full commit SHA before production use.
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ runner.temp }}/duoready-bin
+        key: ${{ steps.locate.outputs.cache-key }}
+
+    - name: Check DuoReady
+      shell: bash
+      env:
+        BIN_DIR: ${{ runner.temp }}/duoready-bin
+      run: |
+        "$BIN_DIR/duoready" version
+        echo "DUOREADY_BIN=$BIN_DIR/duoready" >> "$GITHUB_ENV"
 
     - name: Scan
       id: scan

@@ -23,11 +23,21 @@ Commit these changes as "Release 0.1.0".
 ```sh
 git tag -a v0.1.0 -m "DuoReady 0.1.0"
 git push origin main v0.1.0
-gh release create v0.1.0 --title "DuoReady 0.1.0" --notes-file <(sed -n '/## \[0.1.0\]/,/## \[/p' CHANGELOG.md | sed '1d;$d')
 ```
 
-Mint and the GitHub Action (`uses: toluwade/duoready@v0.1.0`) work as soon as the tag is
-public. Mint installs the latest tag by default.
+Pushing the tag runs `.github/workflows/release.yml`, which:
+
+1. builds a universal (Apple silicon and Intel) binary and checks that `duoready version` matches
+   the tag,
+2. creates the GitHub release, using the version's section of `CHANGELOG.md` as the notes, and
+3. attaches `duoready-macos-universal.zip` and its `.sha256` checksum.
+
+Check that the release has both files. The GitHub Action downloads them for
+`uses: toluwade/duoready@v0.1.0` and verifies the checksum, so it starts in seconds instead of
+compiling. Mint also works as soon as the tag is public, and installs the latest tag by default.
+
+To test the release build without publishing anything, run the workflow by hand:
+`gh workflow run release.yml`.
 
 ## 3. Publish to Homebrew
 

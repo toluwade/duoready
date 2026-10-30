@@ -31,5 +31,10 @@ All notable changes to this project are documented here. The format follows
   condition. DR004 only compares the sizes of views, windows, screens and geometry proxies.
   DR005 recognizes a priority lowered later in the same block. DR006 reports once per
   `.frame` call.
+- The GitHub Action starts in seconds: it downloads the prebuilt binary for a release tag
+  (checksum verified), and otherwise caches the binary it builds. A release workflow publishes
+  the universal binary when a version tag is pushed.
+- swift-syntax 604, so DuoReady parses the newest Swift syntax. Versions 601 to 604 are
+  supported.
 - Installation with Mint, and a Homebrew formula template and release script for the
   `toluwade/tap` tap.

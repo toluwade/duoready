@@ -1,0 +1,73 @@
+name: Release
+
+# Pushing a version tag (v0.1.0) builds a universal macOS binary and
+# publishes it on the GitHub release, where the DuoReady action downloads
+# it instead of compiling. Run it manually to test the build without
+# publishing anything.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build universal binary
+        run: swift build -c release --product duoready --arch arm64 --arch x86_64
+
+      - name: Package
+        run: |
+          bin="$(swift build -c release --product duoready --arch arm64 --arch x86_64 --show-bin-path)/duoready"
+          lipo -info "$bin"
+          version="$("$bin" version)"
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::duoready version prints $version but the tag is $GITHUB_REF_NAME. Update DuoReady.version first."
+            exit 1
+          fi
+          mkdir dist
+          cp "$bin" dist/duoready
+          cd dist
+          zip -q duoready-macos-universal.zip duoready
+          shasum -a 256 duoready-macos-universal.zip > duoready-macos-universal.zip.sha256
+          cat duoready-macos-universal.zip.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: duoready-macos-universal
+          path: |
+            dist/duoready-macos-universal.zip
+            dist/duoready-macos-universal.zip.sha256
+
+  publish:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: duoready-macos-universal
+          path: dist
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          # The release notes are this version's section of CHANGELOG.md.
+          awk -v heading="## [$version]" 'index($0, heading) == 1 { found = 1; next } /^## \[/ { found = 0 } found' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "See CHANGELOG.md." > notes.md
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag --title "DuoReady $version" --notes-file notes.md
+          fi
+          gh release upload "$TAG" dist/duoready-macos-universal.zip dist/duoready-macos-universal.zip.sha256 --clobber

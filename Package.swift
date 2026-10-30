@@ -11,7 +11,10 @@ let package = Package(
         .library(name: "DuoReadyReporters", targets: ["DuoReadyReporters"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "601.0.0"),
+        // Each swift-syntax major version matches a Swift release. Allowing the
+        // range keeps DuoReady parsing the newest syntax while still building
+        // with older toolchains.
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", "601.0.0"..<"605.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     ],
     targets: [
