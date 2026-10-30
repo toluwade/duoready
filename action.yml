@@ -1,5 +1,5 @@
 name: DuoReady
-description: Scan SwiftUI and UIKit code for adaptive-layout and resizability problems.
+description: Catch iPhone Duo foldable and resizing bugs in SwiftUI and UIKit code before they ship.
 branding:
   icon: smartphone
   color: blue

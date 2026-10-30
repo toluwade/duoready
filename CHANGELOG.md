@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-30
+
+### Changed
+
+- The GitHub Action description now names iPhone Duo, for the GitHub Marketplace listing.
+
 ## [0.1.0] - 2026-10-30
 
 ### Added
