@@ -239,7 +239,8 @@ never builds or runs the code it scans.
 
 </details>
 
-## Using it on an existing app
+<details>
+<summary><h2>Using it on an existing app</h2></summary>
 
 Got 80 findings on day one? You don't have to fix them all before turning on CI. Record them in
 a **baseline**:
@@ -268,7 +269,10 @@ then run `duoready baseline` again to shrink the file.
 
 </details>
 
-## Configuration
+</details>
+
+<details>
+<summary><h2>Configuration</h2></summary>
 
 Configuration is optional. To customize DuoReady, create `.duoready.json` in your project:
 
@@ -340,7 +344,10 @@ scanner broke."
 
 </details>
 
-## How it works
+</details>
+
+<details>
+<summary><h2>How it works</h2></summary>
 
 DuoReady parses each Swift file with Apple's [SwiftSyntax](https://github.com/swiftlang/swift-syntax),
 the same parser the Swift compiler uses, and reads Info.plist files and Xcode build settings for
@@ -354,7 +361,10 @@ independently tested check, which makes adding a new one easy.
 - **An auto-fixer.** The right fix depends on context, so it explains the fix instead of
   rewriting your code.
 
-## Contributing
+</details>
+
+<details>
+<summary><h2>Contributing</h2></summary>
 
 Contributions are welcome. The most valuable one is a **false-positive report**: if DuoReady
 flags code that's actually fine, [open an issue](../../issues/new/choose) with a small snippet.
@@ -365,6 +375,8 @@ and docs.
 ```sh
 swift build && swift test
 ```
+
+</details>
 
 ## License
 
