@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "exclude": ["Vendor/**"],
+  "rules": {
+    "DR002": { "severity": "error" }
+  },
+  "failOn": "error"
+}

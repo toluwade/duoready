@@ -1,0 +1,91 @@
+name: DuoReady
+description: Scan SwiftUI and UIKit code for adaptive-layout and resizability problems.
+branding:
+  icon: smartphone
+  color: blue
+
+inputs:
+  path:
+    description: Directory or .swift file to scan, relative to the repository root.
+    default: "."
+  config:
+    description: Configuration file. Defaults to .duoready.json in the scanned directory, if present.
+    default: ""
+  severity:
+    description: "Fail when findings are at or above this severity: info, warning or error. Defaults to failOn in the configuration."
+    default: ""
+  format:
+    description: "Log output format: github (inline annotations), text or json."
+    default: github
+  upload-report:
+    description: Also write a JSON report and upload it as a workflow artifact.
+    default: "false"
+
+outputs:
+  exit-code:
+    description: "0 no failing findings, 1 failing findings, 2 invalid arguments or configuration, 3 scan failure."
+    value: ${{ steps.scan.outputs.exit-code }}
+  report-path:
+    description: Path of the JSON report, when upload-report is true.
+    value: ${{ steps.scan.outputs.report-path }}
+
+runs:
+  using: composite
+  steps:
+    # Inputs are passed through environment variables, never interpolated
+    # into scripts, so pull-request content cannot inject shell commands.
+    - name: Validate inputs
+      shell: bash
+      env:
+        INPUT_FORMAT: ${{ inputs.format }}
+        INPUT_SEVERITY: ${{ inputs.severity }}
+        INPUT_UPLOAD: ${{ inputs.upload-report }}
+      run: |
+        case "$INPUT_FORMAT" in github|text|json) ;; *) echo "::error::format must be github, text or json"; exit 2 ;; esac
+        case "$INPUT_SEVERITY" in ""|info|warning|error) ;; *) echo "::error::severity must be info, warning or error"; exit 2 ;; esac
+        case "$INPUT_UPLOAD" in true|false) ;; *) echo "::error::upload-report must be true or false"; exit 2 ;; esac
+
+    # Builds the CLI from the same commit as this action, so the scanner
+    # version always matches the action ref you pinned.
+    - name: Build DuoReady
+      shell: bash
+      run: |
+        swift build -c release --product duoready --package-path "$GITHUB_ACTION_PATH"
+        echo "DUOREADY_BIN=$(swift build -c release --show-bin-path --package-path "$GITHUB_ACTION_PATH")/duoready" >> "$GITHUB_ENV"
+
+    - name: Scan
+      id: scan
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_FORMAT: ${{ inputs.format }}
+        INPUT_SEVERITY: ${{ inputs.severity }}
+        INPUT_UPLOAD: ${{ inputs.upload-report }}
+      run: |
+        args=(scan "$INPUT_PATH")
+        [ -n "$INPUT_CONFIG" ] && args+=(--config "$INPUT_CONFIG")
+        [ -n "$INPUT_SEVERITY" ] && args+=(--severity "$INPUT_SEVERITY")
+
+        if [ "$INPUT_UPLOAD" = "true" ]; then
+          report="$RUNNER_TEMP/duoready-report.json"
+          "$DUOREADY_BIN" "${args[@]}" --format json --output "$report" || true
+          echo "report-path=$report" >> "$GITHUB_OUTPUT"
+        fi
+
+        set +e
+        "$DUOREADY_BIN" "${args[@]}" --format "$INPUT_FORMAT"
+        status=$?
+        set -e
+        echo "exit-code=$status" >> "$GITHUB_OUTPUT"
+        exit "$status"
+
+    - name: Upload report
+      if: always() && inputs.upload-report == 'true' && steps.scan.outputs.report-path != ''
+      # Pin to a full commit SHA before production use.
+      uses: actions/upload-artifact@v4
+      with:
+        name: duoready-report
+        path: ${{ steps.scan.outputs.report-path }}
+        if-no-files-found: ignore

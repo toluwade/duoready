@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show toolchain
+        run: swift --version
+      - name: Build
+        run: swift build
+      - name: Test
+        run: swift test
+
+  # Runs the action from this checkout against the fixture app, which
+  # contains one error-level finding and must therefore fail the scan.
+  action-self-test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run DuoReady
+        id: duoready
+        continue-on-error: true
+        uses: ./
+        with:
+          path: Tests/DuoReadyIntegrationTests/Fixtures/SampleApp
+          upload-report: "true"
+      - name: Expect findings to fail the check
+        env:
+          OUTCOME: ${{ steps.duoready.outcome }}
+          EXIT_CODE: ${{ steps.duoready.outputs.exit-code }}
+        run: |
+          test "$OUTCOME" = "failure"
+          test "$EXIT_CODE" = "1"

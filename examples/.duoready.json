@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "exclude": [
+    "Pods/**",
+    "build/**",
+    "DerivedData/**",
+    "Vendor/**"
+  ],
+  "rules": {
+    "DR001": { "enabled": true, "severity": "warning" },
+    "DR002": { "enabled": true, "severity": "warning" },
+    "DR003": { "enabled": true, "severity": "warning" },
+    "DR004": { "enabled": true, "severity": "warning" },
+    "DR005": { "enabled": true, "severity": "warning" },
+    "DR006": { "enabled": true, "severity": "info" }
+  },
+  "failOn": "error",
+  "baseline": ".duoready-baseline.json"
+}
