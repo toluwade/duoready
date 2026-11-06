@@ -388,4 +388,6 @@ swift build && swift test
   <img src="docs/images/logo.png" alt="DuoReady logo" width="72">
   <br>
   <sub>Built for developers getting their apps ready for iPhone Duo.</sub>
+  <br>
+  <sub>Built by <a href="https://toluwade.com">Tolu Wade</a> (<a href="https://github.com/toluwade">@toluwade</a>).</sub>
 </div>
